@@ -49,17 +49,24 @@ jobs:
       # ------------------------------
       # 4. SONAR BEGIN
       # ------------------------------
+      - name: Print path test
+        working-directory: ./Backend
+        run: |
+          echo "Current Directory:"
+          pwd
+          echo ${GITHUB_WORKSPACE}
+            
       - name: Sonar Begin
-        working-directory: Backend
+        working-directory: ./Backend
         run: |
           dotnet-sonarscanner begin \
-            /k:"${{ github.repository }}" \
+            /k:"premalwonderbiz_DeviceMonitoringBackend" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
             /s:"../Configurations/SonarQube.Analysis.xml"
 
       - name: Restore solutions
-        working-directory: Backend
+        working-directory: ./Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -67,7 +74,7 @@ jobs:
           }
       
       - name: Build solutions
-        working-directory: Backend
+        working-directory: ./Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -75,7 +82,7 @@ jobs:
           }
       
       - name: Test solutions
-        working-directory: Backend
+        working-directory: ./Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -83,6 +90,6 @@ jobs:
           }
       
       - name: Sonar End
-        working-directory: Backend
+        working-directory: ./Backend
         run: |
           dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
