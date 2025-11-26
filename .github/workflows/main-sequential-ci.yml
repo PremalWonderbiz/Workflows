@@ -64,6 +64,7 @@ jobs:
             /k:"premalwonderbiz_DeviceMonitoringBackend" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.exclusions="${{ inputs.sonarAnalysisFile }}" \
             /s:${GITHUB_WORKSPACE}/Configurations/SonarQube.Analysis.xml
 
       - name: Restore solutions
