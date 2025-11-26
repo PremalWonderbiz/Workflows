@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "Current Directory:"
           pwd
-          echo ${GITHUB_WORKSPACE}
+          echo ${GITHUB_WORKSPACE}/Configurations/SonarQube.Analysis.xml
             
       - name: Sonar Begin
         working-directory: ./Backend
@@ -63,7 +63,7 @@ jobs:
             /k:"premalwonderbiz_DeviceMonitoringBackend" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
-            /s:"../Configurations/SonarQube.Analysis.xml"
+            /s:${GITHUB_WORKSPACE}/Configurations/SonarQube.Analysis.xml
 
       - name: Restore solutions
         working-directory: ./Backend
