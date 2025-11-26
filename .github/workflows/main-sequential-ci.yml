@@ -1,0 +1,103 @@
+name: main-sequential-ci
+
+on:
+  workflow_call:
+    inputs:
+      sonarAnalysisFile:
+        description: "Path to SonarQube.Analysis.xml"
+        required: true
+        type: string
+
+jobs:
+  sonar-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ------------------------------
+      # 1. CHECKOUT CALLER REPO
+      # ------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ------------------------------
+      # 2. SETUP RUNTIMES (Hardcoded Versions)
+      # ------------------------------
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: "temurin"
+
+      # ------------------------------
+      # 3. INSTALL SONAR SCANNER
+      # ------------------------------
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      # ------------------------------
+      # 4. SONAR BEGIN
+      # ------------------------------
+      - name: Sonar Begin
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet-sonarscanner begin \
+            /k:"${{ github.repository }}" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.login="$SONAR_TOKEN" \
+            /s:"${{ inputs.sonarAnalysisFile }}"
+
+      # ------------------------------
+      # 5. RESTORE ALL .NET SOLUTIONS
+      # ------------------------------
+      - name: Restore .NET solutions
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse *.sln | ForEach-Object {
+            Write-Host "Restoring $_"
+            dotnet restore $_.FullName
+          }
+
+      # ------------------------------
+      # 6. BUILD ALL .NET SOLUTIONS
+      # ------------------------------
+      - name: Build .NET solutions
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse *.sln | ForEach-Object {
+            Write-Host "Building $_"
+            dotnet build $_.FullName --no-restore --configuration Release
+          }
+
+      # ------------------------------
+      # 7. TEST ALL .NET SOLUTIONS (WITH COVERAGE)
+      # ------------------------------
+      - name: Test .NET solutions with coverage
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse *.sln | ForEach-Object {
+            Write-Host "Testing $_"
+            dotnet test $_.FullName /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/
+          }
+
+      # ------------------------------
+      # 8. SONAR END
+      # ------------------------------
+      - name: Sonar End
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet-sonarscanner end /d:sonar.login="$SONAR_TOKEN"
