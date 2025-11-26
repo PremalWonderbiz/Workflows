@@ -60,6 +60,7 @@ jobs:
         working-directory: ./Backend
         run: |
           dotnet-sonarscanner begin \
+            /o:"premalwonderbiz" \
             /k:"premalwonderbiz_DeviceMonitoringBackend" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
