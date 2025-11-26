@@ -56,7 +56,7 @@ jobs:
             /k:"${{ github.repository }}" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
-            /s:${env:GITHUB_WORKSPACE}/Configurations/SonarQube.Analysis.xml
+            /s:"../Configurations/SonarQube.Analysis.xml"
 
       - name: Restore solutions
         working-directory: ./Backend
