@@ -50,7 +50,7 @@ jobs:
       # 4. SONAR BEGIN
       # ------------------------------
       - name: Sonar Begin
-        working-directory: ./Backend
+        working-directory: Backend
         run: |
           dotnet-sonarscanner begin \
             /k:"${{ github.repository }}" \
@@ -59,7 +59,7 @@ jobs:
             /s:"../Configurations/SonarQube.Analysis.xml"
 
       - name: Restore solutions
-        working-directory: ./Backend
+        working-directory: Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -67,7 +67,7 @@ jobs:
           }
       
       - name: Build solutions
-        working-directory: ./Backend
+        working-directory: Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -75,7 +75,7 @@ jobs:
           }
       
       - name: Test solutions
-        working-directory: ./Backend
+        working-directory: Backend
         shell: pwsh
         run: |
           Get-ChildItem -Recurse *.sln | ForEach-Object {
@@ -83,6 +83,6 @@ jobs:
           }
       
       - name: Sonar End
-        working-directory: ./Backend
+        working-directory: Backend
         run: |
           dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
