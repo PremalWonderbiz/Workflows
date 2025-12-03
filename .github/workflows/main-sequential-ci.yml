@@ -66,10 +66,10 @@ jobs:
       
           echo "=== DEBUG PRINTS FROM Load Configurations ==="
           echo "backendServices:"
-          yq '.backendServices' $CONFIG
+          yq -o=json -I=0 '.backendServices' $CONFIG
       
           echo "frontendProjects:"
-          yq '.frontendProjects' $CONFIG
+          yq -o=json -I=0 '.frontendProjects' $CONFIG
       
           echo "backend.sonar:"
           yq '.settings.backend.sonar' $CONFIG
