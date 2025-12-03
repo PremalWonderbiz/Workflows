@@ -58,12 +58,24 @@ jobs:
         id: config
         run: |
           CONFIG="Configurations/project-config.yml"
-
+      
           echo "backend=$(yq '.backendServices' $CONFIG | jq -c)" >> $GITHUB_OUTPUT
           echo "frontend=$(yq '.frontendProjects' $CONFIG | jq -c)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSonarRaw=$(yq '.settings.frontend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
-
+      
+          echo "=== DEBUG PRINTS FROM Load Configurations ==="
+          echo "backendServices:"
+          yq '.backendServices' $CONFIG
+      
+          echo "frontendProjects:"
+          yq '.frontendProjects' $CONFIG
+      
+          echo "backend.sonar:"
+          yq '.settings.backend.sonar' $CONFIG
+      
+          echo "frontend.sonar:"
+          yq '.settings.frontend.sonar' $CONFIG
 
       # ==========================================================
       # VALIDATION (CRITICAL)
