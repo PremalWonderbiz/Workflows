@@ -176,19 +176,19 @@ jobs:
       
           # Run Sonar Begin with inclusions (if any)
           if ([string]::IsNullOrEmpty($inclusions)) {
-            dotnet-sonarscanner begin \
-              /k:"${{ inputs.backend_sonar_key }}" \
-              /o:"${{ secrets.SONAR_ORG }}" \
-              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
+            dotnet-sonarscanner begin `
+              /k:"${{ inputs.backend_sonar_key }}" `
+              /o:"${{ secrets.SONAR_ORG }}" `
+              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
+              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
               /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
           } else {
-            dotnet-sonarscanner begin \
-              /k:"${{ inputs.backend_sonar_key }}" \
-              /o:"${{ secrets.SONAR_ORG }}" \
-              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
-              /d:sonar.inclusions="$inclusions" \
+            dotnet-sonarscanner begin `
+              /k:"${{ inputs.backend_sonar_key }}" `
+              /o:"${{ secrets.SONAR_ORG }}" `
+              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
+              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
+              /d:sonar.inclusions="$inclusions" `
               /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
           }
 
