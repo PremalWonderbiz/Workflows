@@ -288,6 +288,6 @@ jobs:
           # Run ONE scan
           npm exec sonar-scanner `
           -Dsonar.organization="${{ secrets.SONAR_ORG }}" `
+          -Dsonar.host.url="$env:SONAR_HOST_URL"
           -Dsonar.projectKey="${{ inputs.frontend_sonar_key }}" `
           -Dsonar.token="$env:SONAR_TOKEN" `
-          -Dsonar.host.url="$env:SONAR_HOST_URL"
