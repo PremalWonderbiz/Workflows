@@ -152,14 +152,45 @@ jobs:
       # ==========================================================
       - name: Sonar Begin (Backend)
         if: ${{ steps.validate.outputs.backendSonar == 'true' && steps.validate.outputs.skipBackendSonar != 'true' }}
+        shell: pwsh
         run: |
-          dotnet-sonarscanner begin \
-            /k:"${{ inputs.backend_sonar_key }}" \
-            /o:"premalwonderbiz" \
-            /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-            /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
-            /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
-
+          # Read backend list (produced by previous Load Config step)
+          $services = '${{ steps.config.outputs.backend }}' | ConvertFrom-Json
+      
+          # Build inclusions list from each service.path
+          $inclusionsList = @()
+          foreach ($svc in $services) {
+            # normalize slashes and add recursive glob
+            $p = ($svc.path).Replace("\", "/").TrimEnd("/")
+            # choose pattern you want Sonar to analyze (folder recursive)
+            $inclusionsList += "$p/**"
+          }
+      
+          # If nothing, leave it empty (sonar default)
+          $inclusions = ""
+          if ($inclusionsList.Count -gt 0) {
+            $inclusions = $inclusionsList -join ","
+          }
+      
+          Write-Host "Computed sonar.inclusions: $inclusions"
+      
+          # Run Sonar Begin with inclusions (if any)
+          if ([string]::IsNullOrEmpty($inclusions)) {
+            dotnet-sonarscanner begin \
+              /k:"${{ inputs.backend_sonar_key }}" \
+              /o:"${{ secrets.SONAR_ORG }}" \
+              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
+              /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
+          } else {
+            dotnet-sonarscanner begin \
+              /k:"${{ inputs.backend_sonar_key }}" \
+              /o:"${{ secrets.SONAR_ORG }}" \
+              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+              /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
+              /d:sonar.inclusions="$inclusions" \
+              /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
+          }
 
       - name: Build & Test Backend Services
         if: ${{ steps.validate.outputs.backendSonar == 'true' && steps.validate.outputs.skipBackendSonar != 'true' }}
@@ -256,4 +287,6 @@ jobs:
           # Run ONE scan
           npm exec sonar-scanner `
             -Dsonar.host.url="$env:SONAR_HOST_URL" `
-            -Dsonar.login="$env:SONAR_TOKEN"     
+            -Dsonar.login="$env:SONAR_TOKEN"  `
+            -Dsonar.organization="${{ secrets.SONAR_ORG }}" `
+            -Dsonar.projectKey="${{ inputs.frontend_sonar_key }}"
