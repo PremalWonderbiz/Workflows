@@ -156,6 +156,7 @@ jobs:
         run: |
           # Read backend list (produced by previous Load Config step)
           $services = '${{ steps.config.outputs.backend }}' | ConvertFrom-Json
+          $configPath = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/SonarQube.Analysis.xml"
       
           # Build inclusions list from each service.path
           $inclusionsList = @()
@@ -181,7 +182,7 @@ jobs:
               /o:"${{ secrets.SONAR_ORG }}" `
               /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
               /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
-              /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
+              /s:"$configPath"
           } else {
             dotnet-sonarscanner begin `
               /k:"${{ inputs.backend_sonar_key }}" `
@@ -189,7 +190,7 @@ jobs:
               /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
               /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
               /d:sonar.inclusions="$inclusions" `
-              /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
+              /s:"$configPath"
           }
 
       - name: Build & Test Backend Services
