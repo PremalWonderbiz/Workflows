@@ -258,7 +258,7 @@ jobs:
           $sources = ($sourceList -join ",")
       
           # Recommended base directory = repo root
-          $baseDir = "${GITHUB_WORKSPACE}".Replace("\", "/")
+          $baseDir = "$env:GITHUB_WORKSPACE".Replace("\", "/")
       
           Write-Host "Updating sonar-project.properties for all MFEs..."
       
