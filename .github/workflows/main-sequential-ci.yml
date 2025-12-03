@@ -235,7 +235,7 @@ jobs:
           $services = '${{ steps.config.outputs.frontend }}' | ConvertFrom-Json
       
           # Use existing analysis folder and properties file
-          $analysisDir = "${GITHUB_WORKSPACE}/Configurations/sonar/FrontendSonarAnalysis"
+          $analysisDir = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/FrontendSonarAnalysis"
           $propsFile = "$analysisDir/sonar-project.properties"
       
           if (-not (Test-Path $propsFile)) {
