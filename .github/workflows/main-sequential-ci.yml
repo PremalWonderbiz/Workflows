@@ -231,10 +231,10 @@ jobs:
         if: ${{ steps.validate.outputs.frontendSonar == 'true' && steps.validate.outputs.skipFrontendSonar != 'true' }}
         shell: pwsh
         run: |
-          # Load frontend project list from config
+          # Load frontend project list
           $services = '${{ steps.config.outputs.frontend }}' | ConvertFrom-Json
       
-          # Use existing analysis folder and properties file
+          # Use existing analysis folder
           $analysisDir = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/FrontendSonarAnalysis"
           $propsFile = "$analysisDir/sonar-project.properties"
       
@@ -243,26 +243,56 @@ jobs:
             exit 1
           }
       
-          # Install sonar-scanner locally inside analysis directory
-          cd $analysisDir
-          npm install sonar-scanner --save-dev | Out-Null
+          # Build each project first
+          foreach ($svc in $services) {
+            Write-Host "Building frontend project: $($svc.name)"
+            $mfePath = Join-Path $env:GITHUB_WORKSPACE $svc.path
       
-          # Build dynamic MFE source list
+            if (-not (Test-Path $mfePath)) {
+              Write-Warning "MFE path missing: $mfePath"
+              continue
+            }
+      
+            cd $mfePath
+      
+            if (Test-Path "package-lock.json") {
+              npm ci
+            } else {
+              npm install
+            }
+      
+            if (Test-Path "package.json") {
+              # build
+              if ((npm run | Select-String -Pattern "build")) {
+                npm run build
+              } else {
+                Write-Warning "No build script for project $($svc.name)"
+              }
+      
+              # tests
+              if ((npm run | Select-String -Pattern "test")) {
+                npm test -- --coverage
+              } else {
+                Write-Warning "No test script for project $($svc.name)"
+              }
+            }
+      
+            cd $analysisDir
+          }
+      
+          # Build dynamic sources for sonar
           $sourceList = @()
           foreach ($svc in $services) {
             $src = "$($svc.path)/src".Replace("\", "/")
             $sourceList += $src
           }
       
-          # Multi-project sources → comma separated
           $sources = ($sourceList -join ",")
       
-          # Recommended base directory = repo root
           $baseDir = "$env:GITHUB_WORKSPACE".Replace("\", "/")
       
           Write-Host "Updating sonar-project.properties for all MFEs..."
       
-          # Remove old dynamic entries if exist
           (Get-Content $propsFile |
             Where-Object {
               -not ($_ -match "^sonar\.projectBaseDir=") -and
@@ -271,7 +301,6 @@ jobs:
             }) |
             Set-Content $propsFile
       
-          # Append dynamic values
           @"
           sonar.projectBaseDir=$baseDir
           sonar.sources=$sources
@@ -281,13 +310,14 @@ jobs:
           Write-Host "Updated sonar-project.properties:"
           Get-Content $propsFile
       
-          # Set sonar auth safely (env only)
           $env:SONAR_TOKEN    = "${{ secrets.SONAR_TOKEN }}"
           $env:SONAR_HOST_URL = "${{ secrets.SONAR_HOST_URL }}"
-
-          # Run ONE scan
+      
+          # ---------------------------
+          # Run Sonar
+          # ---------------------------
           npx sonar-scanner `
-          "-Dsonar.projectKey=${{ inputs.frontend_sonar_key }}" `
-          "-Dsonar.organization=${{ secrets.SONAR_ORG }}" `
-          "-Dsonar.host.url=$env:SONAR_HOST_URL" `
-          "-Dsonar.token=$env:SONAR_TOKEN"
+            "-Dsonar.projectKey=${{ inputs.frontend_sonar_key }}" `
+            "-Dsonar.organization=${{ secrets.SONAR_ORG }}" `
+            "-Dsonar.host.url=$env:SONAR_HOST_URL" `
+            "-Dsonar.token=$env:SONAR_TOKEN"
