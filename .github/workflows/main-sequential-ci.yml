@@ -7,6 +7,8 @@ on:
         required: true
       SONAR_TOKEN:
         required: true
+      SONAR_ORG:
+        required: false
     inputs:
       backend_sonar_key:
         type: string
@@ -153,6 +155,7 @@ jobs:
         run: |
           dotnet-sonarscanner begin \
             /k:"${{ inputs.backend_sonar_key }}" \
+            /o:"${{ secrets.SONAR_ORG }}" \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
             /s:"${GITHUB_WORKSPACE}/Configurations/sonar/SonarQube.Analysis.xml"
