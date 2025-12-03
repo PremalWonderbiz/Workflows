@@ -59,8 +59,8 @@ jobs:
         run: |
           CONFIG="Configurations/project-config.yml"
       
-          echo "backend=$(yq '.backendServices' $CONFIG | jq -c)" >> $GITHUB_OUTPUT
-          echo "frontend=$(yq '.frontendProjects' $CONFIG | jq -c)" >> $GITHUB_OUTPUT
+          echo "backend=$(yq -o=json -c '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontend=$(yq -o=json -c '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSonarRaw=$(yq '.settings.frontend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
       
