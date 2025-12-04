@@ -3,17 +3,19 @@ name: generic-ci
 on:
   workflow_call:
     secrets:
-      SONAR_HOST_URL:
-        required: true
       SONAR_TOKEN:
         required: true
-      SONAR_ORG:
-        required: false
     inputs:
       backend_sonar_key:
         type: string
         required: true
       frontend_sonar_key:
+        type: string
+        required: true
+      SONAR_HOST_URL:
+        type: string
+        required: true
+      SONAR_ORG:
         type: string
         required: true
 
