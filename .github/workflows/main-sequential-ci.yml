@@ -391,3 +391,27 @@ jobs:
             "-Dsonar.organization=${{ secrets.SONAR_ORG }}" `
             "-Dsonar.host.url=$env:SONAR_HOST_URL" `
             "-Dsonar.token=$env:SONAR_TOKEN"
+
+
+      # ==========================================================
+      # GITHUB_STEP_SUMMARY
+      # ==========================================================
+      - name: Add SonarQube Report Links to Summary
+        shell: pwsh
+        run: |
+          $backendUrl  = "https://sonarcloud.io/project/overview?id=${{ inputs.backend_sonar_key }}"
+          $frontendUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
+      
+          @"
+          # 🔍 SonarQube Analysis Summary
+          
+          ## Backend Analysis
+          - **Project Key:** `${{ inputs.backend_sonar_key }}`
+          - **Report URL:** [$backendUrl]($backendUrl)
+          
+          ## Frontend Analysis
+          - **Project Key:** `${{ inputs.frontend_sonar_key }}`
+          - **Report URL:** [$frontendUrl]($frontendUrl)
+          
+          📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
