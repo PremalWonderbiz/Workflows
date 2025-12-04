@@ -406,18 +406,14 @@ jobs:
           $backendUrl  = "https://sonarcloud.io/project/overview?id=$backendKey"
           $frontendUrl = "https://sonarcloud.io/project/overview?id=$frontendKey"
       
-          $summary = @"
-          # 🔍 SonarQube Analysis Summary
-          
-          ## Backend Analysis
-          - **Project Key:** `$backendKey`
-          - **Report URL:** [$backendUrl]($backendUrl)
-          
-          ## Frontend Analysis
-          - **Project Key:** `$frontendKey`
-          - **Report URL:** [$frontendUrl]($frontendUrl)
-          
-          📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.
-          "@
+          # Build summary using string concatenation instead of here-string
+          $summary = "# 🔍 SonarQube Analysis Summary`n`n"
+          $summary += "## Backend Analysis`n"
+          $summary += "- **Project Key:** ``$backendKey```n"
+          $summary += "- **Report URL:** [$backendUrl]($backendUrl)`n`n"
+          $summary += "## Frontend Analysis`n"
+          $summary += "- **Project Key:** ``$frontendKey```n"
+          $summary += "- **Report URL:** [$frontendUrl]($frontendUrl)`n`n"
+          $summary += "📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.`n"
           
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
