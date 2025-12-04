@@ -405,7 +405,7 @@ jobs:
           $frontendUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
       
           @"
-          # 🔍 SonarQube Analysis Summary
+          # SonarQube Analysis Summary
           
           ## Backend Analysis
           - **Project Key:** `${{ inputs.backend_sonar_key }}`
