@@ -406,6 +406,8 @@ jobs:
       
           $backendUrl  = "https://sonarcloud.io/project/overview?id=$backendKey"
           $frontendUrl = "https://sonarcloud.io/project/overview?id=$frontendKey"
+          Write-Host "backend = $backendKey"
+          Write-Host "frontend = $frontendKey"
       
           # ==========================
           # HEADER
