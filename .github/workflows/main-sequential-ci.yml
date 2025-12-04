@@ -211,7 +211,7 @@ jobs:
           }
           else {
             Write-Host "Frontend sonar disabled or no frontend changes → skipping frontend sonar"
-            echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT"
+            echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
           }
 
           Write-Host "Validation completed."
