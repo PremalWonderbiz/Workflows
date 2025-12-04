@@ -406,17 +406,18 @@ jobs:
           $backendUrl  = "https://sonarcloud.io/project/overview?id=$backendKey"
           $frontendUrl = "https://sonarcloud.io/project/overview?id=$frontendKey"
       
-          Add-Content $env:GITHUB_STEP_SUMMARY "# 🔍 SonarQube Analysis Summary"
-          Add-Content $env:GITHUB_STEP_SUMMARY ""
-      
-          Add-Content $env:GITHUB_STEP_SUMMARY "## Backend Analysis"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Project Key:** \`$backendKey\`"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$backendUrl]($backendUrl)"
-          Add-Content $env:GITHUB_STEP_SUMMARY ""
-      
-          Add-Content $env:GITHUB_STEP_SUMMARY "## Frontend Analysis"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Project Key:** \`$frontendKey\`"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$frontendUrl]($frontendUrl)"
-          Add-Content $env:GITHUB_STEP_SUMMARY ""
-      
-          Add-Content $env:GITHUB_STEP_SUMMARY "📝 Click the links above to view quality metrics such as code smells, bugs, vulnerabilities, and coverage."
+          $summary = @"
+          # 🔍 SonarQube Analysis Summary
+          
+          ## Backend Analysis
+          - **Project Key:** `$backendKey`
+          - **Report URL:** [$backendUrl]($backendUrl)
+          
+          ## Frontend Analysis
+          - **Project Key:** `$frontendKey`
+          - **Report URL:** [$frontendUrl]($frontendUrl)
+          
+          📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.
+          "@
+          
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
