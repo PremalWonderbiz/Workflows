@@ -405,33 +405,18 @@ jobs:
       
           $backendUrl  = "https://sonarcloud.io/project/overview?id=$backendKey"
           $frontendUrl = "https://sonarcloud.io/project/overview?id=$frontendKey"
-
-          Write-Host "$frontendKey"
-          Write-Host "$backendKey"
       
           Add-Content $env:GITHUB_STEP_SUMMARY "# 🔍 SonarQube Analysis Summary"
           Add-Content $env:GITHUB_STEP_SUMMARY ""
       
-          # ------------------------------
-          # BACKEND
-          # ------------------------------
           Add-Content $env:GITHUB_STEP_SUMMARY "## Backend Analysis"
-          Add-Content $env:GITHUB_STEP_SUMMARY "### Project Key"
-          Add-Content $env:GITHUB_STEP_SUMMARY '```'
-          Add-Content $env:GITHUB_STEP_SUMMARY "$backendKey"
-          Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Project Key:** \`$backendKey\`"
           Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$backendUrl]($backendUrl)"
           Add-Content $env:GITHUB_STEP_SUMMARY ""
       
-          # ------------------------------
-          # FRONTEND
-          # ------------------------------
           Add-Content $env:GITHUB_STEP_SUMMARY "## Frontend Analysis"
-          Add-Content $env:GITHUB_STEP_SUMMARY "### Project Key"
-          Add-Content $env:GITHUB_STEP_SUMMARY '```'
-          Add-Content $env:GITHUB_STEP_SUMMARY "$frontendKey"
-          Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Project Key:** \`$frontendKey\`"
           Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$frontendUrl]($frontendUrl)"
           Add-Content $env:GITHUB_STEP_SUMMARY ""
       
-          Add-Content $env:GITHUB_STEP_SUMMARY "📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage."
+          Add-Content $env:GITHUB_STEP_SUMMARY "📝 Click the links above to view quality metrics such as code smells, bugs, vulnerabilities, and coverage."
