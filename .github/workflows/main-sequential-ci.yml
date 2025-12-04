@@ -397,21 +397,49 @@ jobs:
       # GITHUB_STEP_SUMMARY
       # ==========================================================
       - name: Add SonarQube Report Links to Summary
+        if: always()
         shell: pwsh
         run: |
-          $backendUrl  = "https://sonarcloud.io/project/overview?id=${{ inputs.backend_sonar_key }}"
-          $frontendUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
+          # Build URLs
+          $backendKey  = "${{ inputs.backend_sonar_key }}"
+          $frontendKey = "${{ inputs.frontend_sonar_key }}"
       
-          @"
-          # 🔍 SonarQube Analysis Summary
-          
-          ## Backend Analysis
-          - **Project Key:** `${{ inputs.backend_sonar_key }}`
-          - **Report URL:** [$backendUrl]($backendUrl)
-          
-          ## Frontend Analysis
-          - **Project Key:** `${{ inputs.frontend_sonar_key }}`
-          - **Report URL:** [$frontendUrl]($frontendUrl)
-          
-          📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          $backendUrl  = "https://sonarcloud.io/project/overview?id=$backendKey"
+          $frontendUrl = "https://sonarcloud.io/project/overview?id=$frontendKey"
+      
+          # ==========================
+          # HEADER
+          # ==========================
+          Add-Content $env:GITHUB_STEP_SUMMARY "# 🔍 SonarQube Analysis Summary"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+      
+          # ==========================
+          # BACKEND ANALYSIS SECTION
+          # ==========================
+          Add-Content $env:GITHUB_STEP_SUMMARY "## Backend Analysis"
+      
+          Add-Content $env:GITHUB_STEP_SUMMARY "### Project Key"
+          Add-Content $env:GITHUB_STEP_SUMMARY "```"
+          Add-Content $env:GITHUB_STEP_SUMMARY "$backendKey"
+          Add-Content $env:GITHUB_STEP_SUMMARY "```"
+      
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$backendUrl]($backendUrl)"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+      
+          # ==========================
+          # FRONTEND ANALYSIS SECTION
+          # ==========================
+          Add-Content $env:GITHUB_STEP_SUMMARY "## Frontend Analysis"
+      
+          Add-Content $env:GITHUB_STEP_SUMMARY "### Project Key"
+          Add-Content $env:GITHUB_STEP_SUMMARY "```"
+          Add-Content $env:GITHUB_STEP_SUMMARY "$frontendKey"
+          Add-Content $env:GITHUB_STEP_SUMMARY "```"
+      
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Report URL:** [$frontendUrl]($frontendUrl)"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+      
+          # ==========================
+          # FOOTER
+          # ==========================
+          Add-Content $env:GITHUB_STEP_SUMMARY "📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage."
