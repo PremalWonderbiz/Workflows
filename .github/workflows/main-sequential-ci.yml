@@ -5,6 +5,10 @@ on:
     secrets:
       SONAR_TOKEN:
         required: true
+      COVERITY_BACKEND_PROJECT_TOKEN:
+        required: true
+      COVERITY_FRONTEND_PROJECT_TOKEN:
+        required: true
     inputs:
       backend_sonar_key:
         type: string
@@ -16,6 +20,9 @@ on:
         type: string
         required: true
       SONAR_ORG:
+        type: string
+        required: true
+      COVERITY_EMAIL:
         type: string
         required: true
 
