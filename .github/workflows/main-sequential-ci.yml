@@ -95,6 +95,8 @@ jobs:
       skipBackendSonar: ${{ steps.validate.outputs.frontendChanged }}
       frontendSonar: ${{ steps.validate.outputs.backendChanged }}
       skipFrontendSonar: ${{ steps.validate.outputs.frontendChanged }}
+      backendServices: ${{ steps.config.outputs.backend }}
+      frontendProjects: ${{ steps.config.outputs.frontend }}
 
     steps:
       # ==========================================================
@@ -218,6 +220,7 @@ jobs:
           Write-Host "Validation completed."
       
   sonar-analysis:
+    needs: [detect-changes, load-validate-configuration]
     runs-on: ubuntu-latest
 
     steps:
@@ -420,11 +423,11 @@ jobs:
       # BACKEND SONAR
       # ==========================================================
       - name: Sonar Begin (Backend)
-        if: ${{ steps.validate.outputs.backendSonar == 'true' && steps.validate.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         shell: pwsh
         run: |
           # Read backend list (produced by previous Load Config step)
-          $services = '${{ steps.config.outputs.backend }}' | ConvertFrom-Json
+          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
           $configPath = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/SonarQube.Analysis.xml"
       
           # Build inclusions list from each service.path
@@ -463,10 +466,10 @@ jobs:
           }
 
       - name: Build & Test Backend Services
-        if: ${{ steps.validate.outputs.backendSonar == 'true' && steps.validate.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         shell: pwsh
         run: |
-          $services = '${{ steps.config.outputs.backend }}' | ConvertFrom-Json
+          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
 
           foreach ($svc in $services) {
             Write-Host "Backend service: $($svc.name)"
@@ -490,18 +493,18 @@ jobs:
 
 
       - name: Sonar End (Backend)
-        if: ${{ steps.validate.outputs.backendSonar == 'true' && steps.validate.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         run: dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
       # ==========================================================
       # FRONTEND SONAR
       # ==========================================================
       - name: Sonar Scan (Frontend)
-        if: ${{ steps.validate.outputs.frontendSonar == 'true' && steps.validate.outputs.skipFrontendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.frontendSonar == 'true' && needs.load-validate-configuration.outputs.skipFrontendSonar != 'true' }}
         shell: pwsh
         run: |
           # Load frontend project list
-          $services = '${{ steps.config.outputs.frontend }}' | ConvertFrom-Json
+          $services = '${{ needs.load-validate-configuration.outputs.frontendProjects }}' | ConvertFrom-Json
       
           # Use existing analysis folder
           $analysisDir = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/FrontendSonarAnalysis"
@@ -515,14 +518,14 @@ jobs:
           # Build each project first
           foreach ($svc in $services) {
             Write-Host "Building frontend project: $($svc.name)"
-            $mfePath = Join-Path $env:GITHUB_WORKSPACE $svc.path
+            $projectPath = Join-Path $env:GITHUB_WORKSPACE $svc.path
       
-            if (-not (Test-Path $mfePath)) {
-              Write-Warning "MFE path missing: $mfePath"
+            if (-not (Test-Path $projectPath)) {
+              Write-Warning "Project path missing: $projectPath"
               continue
             }
       
-            cd $mfePath
+            cd $projectPath
       
             if (Test-Path "package-lock.json") {
               npm ci
