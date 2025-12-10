@@ -448,15 +448,15 @@ jobs:
           if ([string]::IsNullOrEmpty($inclusions)) {
             dotnet-sonarscanner begin `
               /k:"${{ inputs.backend_sonar_key }}" `
-              /o:"${{ secrets.SONAR_ORG }}" `
-              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
+              /o:"${{ inputs.SONAR_ORG }}" `
+              /d:sonar.host.url="${{ inputs.SONAR_HOST_URL }}" `
               /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
               /s:"$configPath"
           } else {
             dotnet-sonarscanner begin `
               /k:"${{ inputs.backend_sonar_key }}" `
-              /o:"${{ secrets.SONAR_ORG }}" `
-              /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" `
+              /o:"${{ inputs.SONAR_ORG }}" `
+              /d:sonar.host.url="${{ inputs.SONAR_HOST_URL }}" `
               /d:sonar.login="${{ secrets.SONAR_TOKEN }}" `
               /d:sonar.inclusions="$inclusions" `
               /s:"$configPath"
@@ -580,14 +580,14 @@ jobs:
           Get-Content $propsFile
       
           $env:SONAR_TOKEN    = "${{ secrets.SONAR_TOKEN }}"
-          $env:SONAR_HOST_URL = "${{ secrets.SONAR_HOST_URL }}"
+          $env:SONAR_HOST_URL = "${{ inputs.SONAR_HOST_URL }}"
       
           # ---------------------------
           # Run Sonar
           # ---------------------------
           npx sonar-scanner `
             "-Dsonar.projectKey=${{ inputs.frontend_sonar_key }}" `
-            "-Dsonar.organization=${{ secrets.SONAR_ORG }}" `
+            "-Dsonar.organization=${{ inputs.SONAR_ORG }}" `
             "-Dsonar.host.url=$env:SONAR_HOST_URL" `
             "-Dsonar.token=$env:SONAR_TOKEN"
 
