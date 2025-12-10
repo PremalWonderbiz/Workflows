@@ -590,7 +590,7 @@ jobs:
       - name: Run Coverity Buildless Capture
         if: ${{ needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
         run: |
-          ./coverity/bin/coverity capture --dir cov-int --project-dir ./Frontend --file-exclude-regex ".*/node_modules/.*|.*\.next/.*|.*/out/.*|.*/dist/.*|.*/coverage/.*|.*\.(test|spec)\.(ts|tsx|js|jsx)$|.*\.stories\.(ts|tsx|js|jsx)$|.*/__tests__/.*"
+          ./coverity/bin/coverity capture --dir cov-int --project-dir "$GITHUB_WORKSPACE/Frontend" --file-exclude-regex ".*/node_modules/.*|.*\.next/.*|.*/out/.*|.*/dist/.*|.*/coverage/.*|.*\.(test|spec)\.(ts|tsx|js|jsx)$|.*\.stories\.(ts|tsx|js|jsx)$|.*/__tests__/.*"
           
       # ==========================================================
       # PACKAGE FOR UPLOAD
