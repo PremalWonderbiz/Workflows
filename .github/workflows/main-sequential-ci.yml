@@ -491,7 +491,7 @@ jobs:
       - name: Coverity Build
         shell: pwsh
         run: |
-          $services = '${{ steps.config.outputs.backend }}' | ConvertFrom-Json
+          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
         
           $buildCommands = @()
           foreach ($svc in $services) {
