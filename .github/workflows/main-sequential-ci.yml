@@ -99,7 +99,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skipBackendSonar: ${{ steps.validate.outputs.skipBackendSonar }}
+      skipBackendCoverity: ${{ steps.validate.outputs.skipBackendCoverity }}
       skipFrontendSonar: ${{ steps.validate.outputs.skipFrontendSonar }}
+      skipFrontendCoverity: ${{ steps.validate.outputs.skipFrontendCoverity }}
       backendServices: ${{ steps.config.outputs.backend }}
       frontendProjects: ${{ steps.config.outputs.frontend }}
 
@@ -124,6 +126,8 @@ jobs:
           echo "frontend=$(yq -o=json -I=0 '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSonarRaw=$(yq '.settings.frontend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "backendCoverityRaw=$(yq '.settings.backend.coverity' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontendCoverityRaw=$(yq '.settings.frontend.coverity' $CONFIG)" >> $GITHUB_OUTPUT
       
           echo "=== DEBUG PRINTS FROM Load Configurations ==="
           echo "backendServices:"
@@ -164,7 +168,7 @@ jobs:
             $backendSonar = "false"
           }
           echo "backendSonar=$backendSonar" >> $env:GITHUB_OUTPUT
-
+    
           if ($backendSonar -eq "true") {
             # Must have services
             if (-not $config.backendServices -or $config.backendServices.Count -eq 0) {
@@ -178,8 +182,23 @@ jobs:
               exit 1
             }
           }
+          
+          $backendCoverity = "${{ steps.config.outputs.backendCoverityRaw }}"
+          if ($backendCoverity -eq "" -or $null -eq $backendCoverity) {
+            Write-Host "settings.backend.coverity not found → treating as false"
+            $backendCoverity = "false"
+          }
+          echo "backendCoverity=$backendCoverity" >> $env:GITHUB_OUTPUT
+    
+          if ($backendCoverity -eq "true") {
+            # Must have services
+            if (-not $config.backendServices -or $config.backendServices.Count -eq 0) {
+              Write-Warning "backendServices is empty → skipping backend Coverity"
+              echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
+            }
+          }
 
-          # Skip backend sonar of no changes detected
+          # Skip backend sonar if no changes detected
           $backendChanged = "${{ needs.detect-changes.outputs.backend_changed }}"
           if ($backendSonar -eq "true" -and $backendChanged -eq "True") {
             Write-Host "Backend sonar enabled AND backend changed → will run backend sonar"
@@ -187,6 +206,15 @@ jobs:
           else {
             Write-Host "Backend sonar disabled or no backend changes → skipping backend sonar"
             echo "skipBackendSonar=true" >> $env:GITHUB_OUTPUT
+          }
+          
+          # Skip backend coverity if no changes detected
+          if ($backendSonar -eq "true" -and $backendChanged -eq "True") {
+            Write-Host "Backend coverity enabled AND backend changed → will run backend coverity"
+          }
+          else {
+            Write-Host "Backend coverity disabled or no backend changes → skipping backend coverity"
+            echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
           }
 
           # =====================================================
@@ -212,6 +240,21 @@ jobs:
               echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
             }
           }
+          
+          $frontendCoverity = "${{ steps.config.outputs.frontendCoverityRaw }}"
+          if ($frontendCoverity -eq "" -or $null -eq $frontendCoverity) {
+            Write-Host "settings.frontend.coverity not found → treating as false"
+            $frontendCoverity = "false"
+          }
+          echo "frontendCoverity=$frontendCoverity" >> $env:GITHUB_OUTPUT
+
+          if ($frontendCoverity -eq "true") {
+            # Must have projects
+            if (-not $config.frontendProjects -or $config.frontendProjects.Count -eq 0) {
+              Write-Warning "frontendProjects empty → skipping frontend sonar"
+              echo "skipFrontendCoverity=true" >> $env:GITHUB_OUTPUT
+            }
+          }
 
           $frontendChanged = "${{ needs.detect-changes.outputs.frontend_changed }}"
           if ($frontendSonar -eq "true" -and $frontendChanged -eq "True") {
@@ -220,6 +263,15 @@ jobs:
           else {
             Write-Host "Frontend sonar disabled or no frontend changes → skipping frontend sonar"
             echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
+          }
+          
+        
+          if ($frontendCoverity -eq "true" -and $frontendChanged -eq "True") {
+            Write-Host "Frontend coverity enabled AND frontend changed → will run frontend coverity"
+          }
+          else {
+            Write-Host "Frontend coverity disabled or no frontend changes → skipping frontend coverity"
+            echo "skipFrontendCoverity=true" >> $env:GITHUB_OUTPUT
           }
 
           Write-Host "Validation completed."
@@ -489,6 +541,7 @@ jobs:
       # BUILD FOR COVERITY - BACKEND
       # ==========================================================
       - name: Coverity Build
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' }}
         shell: pwsh
         run: |
           $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
@@ -511,9 +564,11 @@ jobs:
       # PACKAGE FOR UPLOAD
       # ==========================================================
       - name: Create Zip
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' }}
         run: tar czvf cov-int.tgz cov-int
 
       - name: Upload to Coverity Scan
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' }}
         run: |
           curl \
             --form token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }} \
@@ -525,6 +580,7 @@ jobs:
       # CLEANUP HERE - REMOVE COV INT AND TGZ
       # ==========================================================
       - name: Cleanup Coverity Backend Capture
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' }}
         run: |
           rm -rf cov-int cov-int.tgz
               
@@ -532,6 +588,7 @@ jobs:
       # BUILD FOR COVERITY - FRONTEND
       # ==========================================================
       - name: Run Coverity Buildless Capture
+        if: ${{ needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
         run: |
           ./coverity/bin/coverity capture --dir cov-int --project-dir ./Frontend --file-exclude-regex ".*/node_modules/.*|.*\.next/.*|.*/out/.*|.*/dist/.*|.*/coverage/.*|.*\.(test|spec)\.(ts|tsx|js|jsx)$|.*\.stories\.(ts|tsx|js|jsx)$|.*/__tests__/.*"
           
@@ -539,9 +596,11 @@ jobs:
       # PACKAGE FOR UPLOAD
       # ==========================================================
       - name: Create Zip
+        if: ${{ needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
         run: tar czvf cov-int.tgz cov-int
 
       - name: Upload to Coverity Scan
+        if: ${{ needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
         run: |
           curl \
             --form token=${{ secrets.COVERITY_FRONTEND_PROJECT_TOKEN }} \
