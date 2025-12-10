@@ -478,7 +478,7 @@ jobs:
       # ==========================================================
       - name: Download Coverity Tools
         run: |
-          wget -q https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}&project==Device+Monitoring+Backends+Git" -O coverity_tool.tgz
+          wget -q https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}&project=Device+Monitoring+Backends+Git" -O coverity_tool.tgz
 
       - name: Extract Coverity Tools
         run: |
