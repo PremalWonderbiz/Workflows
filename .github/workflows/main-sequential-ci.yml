@@ -91,10 +91,8 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     outputs:
-      backendSonar: ${{ steps.validate.outputs.backendChanged }}
-      skipBackendSonar: ${{ steps.validate.outputs.frontendChanged }}
-      frontendSonar: ${{ steps.validate.outputs.backendChanged }}
-      skipFrontendSonar: ${{ steps.validate.outputs.frontendChanged }}
+      skipBackendSonar: ${{ steps.validate.outputs.skipBackendSonar }}
+      skipFrontendSonar: ${{ steps.validate.outputs.skipFrontendSonar }}
       backendServices: ${{ steps.config.outputs.backend }}
       frontendProjects: ${{ steps.config.outputs.frontend }}
 
@@ -220,7 +218,7 @@ jobs:
           Write-Host "Validation completed."
       
   sonar-analysis:
-    needs: [detect-changes, load-validate-configuration]
+    needs: load-validate-configuration
     runs-on: ubuntu-latest
 
     steps:
@@ -259,7 +257,7 @@ jobs:
       # BACKEND SONAR
       # ==========================================================
       - name: Sonar Begin (Backend)
-        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         shell: pwsh
         run: |
           # Read backend list (produced by previous Load Config step)
@@ -302,7 +300,7 @@ jobs:
           }
 
       - name: Build & Test Backend Services
-        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         shell: pwsh
         run: |
           $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
@@ -329,14 +327,14 @@ jobs:
 
 
       - name: Sonar End (Backend)
-        if: ${{ needs.load-validate-configuration.outputs.backendSonar == 'true' && needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         run: dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
       # ==========================================================
       # FRONTEND SONAR
       # ==========================================================
       - name: Sonar Scan (Frontend)
-        if: ${{ needs.load-validate-configuration.outputs.frontendSonar == 'true' && needs.load-validate-configuration.outputs.skipFrontendSonar != 'true' }}
+        if: ${{ needs.load-validate-configuration.outputs.skipFrontendSonar != 'true' }}
         shell: pwsh
         run: |
           # Load frontend project list
