@@ -478,17 +478,12 @@ jobs:
       # ==========================================================
       - name: Download Coverity Tools
         run: |
-          wget -q https://scan.coverity.com/download/linux64 \
-            --post-data "token=${{ secrets.COVERITY_DEVICE_SERVICE_TOKEN }}&project=Device+Service+Git" \
-            -O coverity_tool.tgz
+          wget -q https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}&project==Device+Monitoring+Backends+Git" -O coverity_tool.tgz
 
       - name: Extract Coverity Tools
         run: |
           mkdir coverity
           tar -zxvf coverity_tool.tgz -C coverity --strip-components=1
-
-      - name: Add Coverity to PATH
-        run: echo "$PWD/coverity/bin" >> $GITHUB_PATH
 
       # ==========================================================
       # BUILD FOR COVERITY
@@ -510,7 +505,7 @@ jobs:
           Write-Host "Running Coverity build:"
           Write-Host $buildCommand
         
-          cov-build --dir cov-int bash -c "$buildCommand"
+          ./coverity/bin/cov-build --dir cov-int bash -c "$buildCommand"
 
       # ==========================================================
       # PACKAGE FOR UPLOAD
