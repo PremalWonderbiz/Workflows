@@ -486,7 +486,7 @@ jobs:
           tar -zxvf coverity_tool.tgz -C coverity --strip-components=1
 
       # ==========================================================
-      # BUILD FOR COVERITY
+      # BUILD FOR COVERITY - BACKEND
       # ==========================================================
       - name: Coverity Build
         shell: pwsh
@@ -520,3 +520,31 @@ jobs:
             --form email=${{ inputs.COVERITY_EMAIL }} \
             --form file=@cov-int.tgz \
             https://scan.coverity.com/builds?project=Device+Monitoring+Backends+Git
+            
+      # ==========================================================
+      # CLEANUP HERE - REMOVE COV INT AND TGZ
+      # ==========================================================
+      - name: Cleanup Coverity Backend Capture
+        run: |
+          rm -rf cov-int cov-int.tgz
+              
+      # ==========================================================
+      # BUILD FOR COVERITY - FRONTEND
+      # ==========================================================
+      - name: Run Coverity Buildless Capture
+        run: |
+          ./coverity/bin/coverity capture --dir cov-int --project-dir ./Frontend --file-exclude-regex ".*/node_modules/.*|.*\.next/.*|.*/out/.*|.*/dist/.*|.*/coverage/.*|.*\.(test|spec)\.(ts|tsx|js|jsx)$|.*\.stories\.(ts|tsx|js|jsx)$|.*/__tests__/.*"
+          
+      # ==========================================================
+      # PACKAGE FOR UPLOAD
+      # ==========================================================
+      - name: Create Zip
+        run: tar czvf cov-int.tgz cov-int
+
+      - name: Upload to Coverity Scan
+        run: |
+          curl \
+            --form token=${{ secrets.COVERITY_FRONTEND_PROJECT_TOKEN }} \
+            --form email=${{ inputs.COVERITY_EMAIL }} \
+            --form file=@cov-int.tgz \
+            https://scan.coverity.com/builds?project=Device+Monitoring+Frontends+Git
