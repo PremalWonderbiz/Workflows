@@ -658,3 +658,134 @@ jobs:
             --form email=${{ inputs.COVERITY_EMAIL }} \
             --form file=@cov-int.tgz \
             https://scan.coverity.com/builds?project=Device+Monitoring+Frontends+Git
+            
+            
+  sbom-analysis:
+    needs: load-validate-configuration 
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ==========================================================
+      # CHECKOUT
+      # ==========================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install SBOM Tool
+        run: dotnet tool install --global Microsoft.Sbom.DotNetTool
+        
+      - name: Create base output folders
+        run: |
+          mkdir artifacts -ErrorAction Ignore
+          mkdir sbom -ErrorAction Ignore
+          
+      - name: Generate SBOM (Backend)
+        if: ${{ needs.load-validate-configuration.outputs.skipBackendSbom != 'true' }}
+        shell: pwsh
+        run: |
+          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
+
+          foreach ($svc in $services) {
+
+            $servicePath = "$($svc.path)".Replace("\", "/")
+            $serviceDir  = Join-Path $env:GITHUB_WORKSPACE $servicePath
+
+            # Find .sln
+            $sln = Get-ChildItem -Path $serviceDir -Filter *.sln -File | Select-Object -First 1
+            if (-not $sln) {
+              Write-Warning "No .sln found in $serviceDir → skipping SBOM for $($svc.name)"
+              continue
+            }
+
+            $serviceName = $svc.name
+
+            Write-Host "`n============ Processing $serviceName ============"
+
+            # Create output folders
+            mkdir "./artifacts/$serviceName" -ErrorAction Ignore | Out-Null
+            mkdir "./sbom/$serviceName"      -ErrorAction Ignore | Out-Null
+
+            # Build service
+            dotnet build $sln.FullName -c Release -o "./artifacts/$serviceName"
+
+            # Generate SBOM
+            sbom-tool generate `
+              -b "./artifacts/$serviceName" `
+              -bc $serviceDir `
+              -pn $serviceName `
+              -pv "1.0.0" `
+              -ps "Premal Kadam" `
+              -m "./sbom/$serviceName"
+          }
+          
+      - name: Generate SBOM (Frontend)
+        if: ${{ needs.load-validate-configuration.outputs.skipFrontendSbom != 'true' }}
+        shell: pwsh
+        run: |
+          $projects = '${{ needs.load-validate-configuration.outputs.frontendProjects }}' | ConvertFrom-Json
+
+          foreach ($proj in $projects) {
+
+            $projectPath = "$($proj.path)".Replace("\", "/")
+            $projectDir  = Join-Path $env:GITHUB_WORKSPACE $projectPath
+            $projectName = $proj.name
+
+            Write-Host "`n============ Processing Frontend: $projectName ============"
+
+            # Create output folders
+            mkdir "./artifacts/$projectName" -ErrorAction Ignore | Out-Null
+            mkdir "./sbom/$projectName"      -ErrorAction Ignore | Out-Null
+
+            # Install & build
+            npm install  --prefix $projectDir
+            npm run build --prefix $projectDir
+
+            # Copy built output (.next, dist, etc.)
+            if (Test-Path "$projectDir/.next") {
+              Copy-Item "$projectDir/.next" "./artifacts/$projectName" -Recurse -Force
+            }
+            elseif (Test-Path "$projectDir/dist") {
+              Copy-Item "$projectDir/dist" "./artifacts/$projectName" -Recurse -Force
+            }
+            elseif (Test-Path "$projectDir/build") {
+              Copy-Item "$projectDir/build" "./artifacts/$projectName" -Recurse -Force
+            }
+            else {
+              Write-Warning "No frontend build output found (.next/dist/build). SBOM may be empty."
+            }
+
+            # Generate SBOM
+            sbom-tool generate `
+              -b "./artifacts/$projectName" `
+              -bc $projectDir `
+              -pn $projectName `
+              -pv "1.0.0" `
+              -ps "Premal Kadam" `
+              -m "./sbom/$projectName"
+          }
+          
+      # ==========================================================
+      # UPLOAD SBOMs PER SERVICE / PROJECT
+      # ==========================================================
+      - name: Upload Individual SBOM Artifacts
+        shell: pwsh
+        run: |
+          # Upload backend service SBOMs
+          Get-ChildItem -Path "sbom" -Directory | ForEach-Object {
+            $name = $_.Name
+            $manifest = Join-Path $_.FullName "_manifest/spdx_2.2/manifest.spdx.json"
+
+            if (Test-Path $manifest) {
+              Write-Host "Uploading SBOM artifact for $name ..."
+              echo "::group::Uploading $name-SBOM"
+              gh run upload-artifact "$name-SBOM" "$manifest"
+              echo "::endgroup::"
+            }
+          }
