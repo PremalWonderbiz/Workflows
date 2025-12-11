@@ -106,6 +106,10 @@ jobs:
       skipFrontendSbom: ${{ steps.validate.outputs.skipFrontendSbom }}
       backendServices: ${{ steps.config.outputs.backend }}
       frontendProjects: ${{ steps.config.outputs.frontend }}
+      backendCoverityProjectName: ${{ steps.config.outputs.backendCoverityProjectName }}
+      backendCoverityProjectUrlName: ${{ steps.config.outputs.backendCoverityProjectUrlName }}
+      frontendCoverityProjectName: ${{ steps.config.outputs.frontendCoverityProjectName }}
+      frontendCoverityProjectUrlName: ${{ steps.config.outputs.frontendCoverityProjectUrlName }}
 
     steps:
       # ==========================================================
@@ -132,6 +136,11 @@ jobs:
           echo "frontendCoverityRaw=$(yq '.settings.frontend.coverity' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSbomRaw=$(yq '.settings.backend.sbom' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSbomRaw=$(yq '.settings.frontend.sbom' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "backendCoverityProjectName=$(yq '.settings.backend.coverity_project_name' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "backendCoverityProjectUrlName=$(yq '.settings.backend.coverity_project_url_name' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontendCoverityProjectName=$(yq '.settings.frontend.coverity_project_name' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontendCoverityProjectUrlName=$(yq '.settings.frontend.coverity_project_url_name' $CONFIG)" >> $GITHUB_OUTPUT
+          
       
           echo "=== DEBUG PRINTS FROM Load Configurations ==="
           echo "backendServices:"
@@ -227,14 +236,22 @@ jobs:
             echo "skipBackendSonar=true" >> $env:GITHUB_OUTPUT
           }
           
+          # Skip backend coverity if no project name found in configurations
+          $backendCoverityProjectName = "${{ steps.config.outputs.backendCoverityProjectName }}"
+          if ($backendCoverityProjectName -eq "" -or $null -eq $backendCoverityProjectName) {
+            Write-Host "settings.backend.coverity_project_name not found → treating as null"
+            $backendCoverity = "false"
+          }
+          
           # Skip backend coverity if no changes detected
-          if ($backendSonar -eq "true" -and $backendChanged -eq "True") {
+          if ($backendCoverity -eq "true" -and $backendChanged -eq "True") {
             Write-Host "Backend coverity enabled AND backend changed → will run backend coverity"
           }
           else {
             Write-Host "Backend coverity disabled or no backend changes → skipping backend coverity"
             echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
           }
+          
           
           # Skip backend sbom if no changes detected
           if ($backendSbom -eq "true" -and $backendChanged -eq "True") {
@@ -309,6 +326,13 @@ jobs:
           }
           
         
+          # Skip frontend coverity if no project name found in configurations
+          $frontendCoverityProjectName = "${{ steps.config.outputs.frontendCoverityProjectName }}"
+          if ($frontendCoverityProjectName -eq "" -or $null -eq $frontendCoverityProjectName) {
+            Write-Host "settings.frontend.coverity_project_name not found → treating as null"
+            $frontendCoverity = "false"
+          }
+          
           if ($frontendCoverity -eq "true" -and $frontendChanged -eq "True") {
             Write-Host "Frontend coverity enabled AND frontend changed → will run frontend coverity"
           }
@@ -538,31 +562,7 @@ jobs:
             "-Dsonar.host.url=$env:SONAR_HOST_URL" `
             "-Dsonar.token=$env:SONAR_TOKEN"
 
-
-      # ==========================================================
-      # GITHUB_STEP_SUMMARY
-      # ==========================================================
-      - name: Add SonarQube Report Links to Summary
-        shell: pwsh
-        run: |
-          $backendUrl  = "https://sonarcloud.io/project/overview?id=${{ inputs.backend_sonar_key }}"
-          $frontendUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
-      
-          @"
-          # SonarQube Analysis Summary
-          
-          ## Backend Analysis
-          - **Project Key:** `${{ inputs.backend_sonar_key }}`
-          - **Report URL:** [$backendUrl]($backendUrl)
-          
-          ## Frontend Analysis
-          - **Project Key:** `${{ inputs.frontend_sonar_key }}`
-          - **Report URL:** [$frontendUrl]($frontendUrl)
-          
-          📝 Click the links above to view code smells, bugs, vulnerabilities, and coverage.
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          
-          
+             
   coverity-analysis:
     needs: load-validate-configuration 
     if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' || needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
@@ -582,7 +582,7 @@ jobs:
       # ==========================================================
       - name: Download Coverity Tools
         run: |
-          wget -q https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}&project=Device+Monitoring+Backends+Git" -O coverity_tool.tgz
+          wget -q https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}&project=${{ needs.load-validate-configuration.outputs.backendCoverityProjectName }}" -O coverity_tool.tgz
 
       - name: Extract Coverity Tools
         run: |
@@ -626,7 +626,7 @@ jobs:
             --form token=${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }} \
             --form email=${{ inputs.COVERITY_EMAIL }} \
             --form file=@cov-int.tgz \
-            https://scan.coverity.com/builds?project=Device+Monitoring+Backends+Git
+            https://scan.coverity.com/builds?project=${{ needs.load-validate-configuration.outputs.backendCoverityProjectName }}
             
       # ==========================================================
       # CLEANUP HERE - REMOVE COV INT AND TGZ
@@ -659,7 +659,7 @@ jobs:
             --form token=${{ secrets.COVERITY_FRONTEND_PROJECT_TOKEN }} \
             --form email=${{ inputs.COVERITY_EMAIL }} \
             --form file=@cov-int.tgz \
-            https://scan.coverity.com/builds?project=Device+Monitoring+Frontends+Git
+            https://scan.coverity.com/builds?project=${{ needs.load-validate-configuration.outputs.frontendCoverityProjectName }}
             
             
   sbom-analysis:
@@ -786,4 +786,68 @@ jobs:
           name: SBOMs
           path: |
             sbom/*/_manifest/spdx_2.2/manifest.spdx.json
+            
+            
+            
+  github-summary:
+    name: Generate Pipeline Summary
+    needs: 
+      - sonar-analysis
+      - coverity-analysis
+      - sbom-analysis
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Add CI Report Summary
+        shell: pwsh
+        run: |
+          # Build Sonar URLs
+          $backendSonarUrl  = "https://sonarcloud.io/project/overview?id=${{ inputs.backend_sonar_key }}"
+          $frontendSonarUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
+
+          # Coverity project names
+          $backendCovKey  = "${{ needs.load-validate-configuration.outputs.backendCoverityProjectUrlName }}"
+          $frontendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
+
+          # Build Coverity URLs only if keys provided
+          if ([string]::IsNullOrWhiteSpace($backendCovKey)) {
+            $backendCoveritySection = "- **Coverity:** Disabled or not configured"
+          } else {
+              $url = "https://scan.coverity.com/projects/$backendCovKey?tab=overview"
+              $backendCoveritySection = "- **Coverity Report:** [$url]($url)"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($frontendCovKey)) {
+              $frontendCoveritySection = "- **Coverity:** Disabled or not configured"
+          } else {
+              $url = "https://scan.coverity.com/projects/$frontendCovKey?tab=overview"
+              $frontendCoveritySection = "- **Coverity Report:** [$url]($url)"
+          }
+
+          @"
+          # CI Quality Analysis Summary
+
+          ## 🔍 SonarQube Analysis
+          ### Backend
+          - **Project Key:** `${{ inputs.backend_sonar_key }}`
+          - **Report:** [$backendSonarUrl]($backendSonarUrl)
+
+          ### Frontend
+          - **Project Key:** `${{ inputs.frontend_sonar_key }}`
+          - **Report:** [$frontendSonarUrl]($frontendSonarUrl)
+
+          ---
+
+          ## 🛡️ Coverity Static Analysis
+          ### Backend
+          $backendCoveritySection
+
+          ### Frontend
+          $frontendCoveritySection
+
+          ---
+
+          ## 📦 SBOM Output
+          SBOM files were generated per project and uploaded as workflow artifacts.
+
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
