@@ -790,6 +790,7 @@ jobs:
             
             
   github-summary:
+    needs: load-validate-configuration 
     name: Generate Pipeline Summary
     runs-on: ubuntu-latest
 
@@ -846,7 +847,7 @@ jobs:
           ## 📦 SBOM Output
           SBOM files were generated per project and uploaded as workflow artifacts.
           
-          ###Note : 
+          #### Note : 
           Once analysis is completed you can check latest reports via above links
 
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
