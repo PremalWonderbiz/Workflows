@@ -682,6 +682,7 @@ jobs:
         run: dotnet tool install --global Microsoft.Sbom.DotNetTool
         
       - name: Create base output folders
+        shell: pwsh
         run: |
           mkdir artifacts -ErrorAction Ignore
           mkdir sbom -ErrorAction Ignore
