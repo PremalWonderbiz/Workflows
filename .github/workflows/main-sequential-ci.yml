@@ -780,21 +780,10 @@ jobs:
               -m "./sbom/$projectName"
           }
           
-      # ==========================================================
-      # UPLOAD SBOMs PER SERVICE / PROJECT
-      # ==========================================================
-      - name: Upload SBOM artifacts
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path "sbom" -Directory | ForEach-Object {
-            $name = $_.Name
-            $manifest = Join-Path $_.FullName "_manifest/spdx_2.2/manifest.spdx.json"
-           
-            if (Test-Path $manifest) {
-              Write-Host "Uploading SBOM artifact for $name ..."
-              echo "::upload-artifact name=$name-SBOM::$manifest"
-            }
-            else {
-              Write-Warning "No manifest found for $name"
-            }
-          }
+      - name: Upload all SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SBOMs
+          path: |
+            sbom/*/_manifest/spdx_2.2/manifest.spdx.json
+
