@@ -791,10 +791,6 @@ jobs:
             
   github-summary:
     name: Generate Pipeline Summary
-    needs: 
-      - sonar-analysis
-      - coverity-analysis
-      - sbom-analysis
     runs-on: ubuntu-latest
 
     steps:
@@ -849,5 +845,8 @@ jobs:
 
           ## 📦 SBOM Output
           SBOM files were generated per project and uploaded as workflow artifacts.
+          
+          ###Note : 
+          Once analysis is completed you can check latest reports via above links
 
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
