@@ -680,6 +680,11 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 8.0.x
+      
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install SBOM Tool
         run: dotnet tool install --global Microsoft.Sbom.DotNetTool
@@ -778,18 +783,18 @@ jobs:
       # ==========================================================
       # UPLOAD SBOMs PER SERVICE / PROJECT
       # ==========================================================
-      - name: Upload Individual SBOM Artifacts
+      - name: Upload SBOM artifacts
         shell: pwsh
         run: |
-          # Upload backend service SBOMs
           Get-ChildItem -Path "sbom" -Directory | ForEach-Object {
             $name = $_.Name
             $manifest = Join-Path $_.FullName "_manifest/spdx_2.2/manifest.spdx.json"
-
+           
             if (Test-Path $manifest) {
               Write-Host "Uploading SBOM artifact for $name ..."
-              echo "::group::Uploading $name-SBOM"
-              gh run upload-artifact "$name-SBOM" "$manifest"
-              echo "::endgroup::"
+              echo "::upload-artifact name=$name-SBOM::$manifest"
+            }
+            else {
+              Write-Warning "No manifest found for $name"
             }
           }
