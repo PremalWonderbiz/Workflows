@@ -804,7 +804,9 @@ jobs:
 
           # Coverity project names
           $backendCovKey  = "${{ needs.load-validate-configuration.outputs.backendCoverityProjectUrlName }}"
-          $frontendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
+          $backendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
+          echo "$backendCovKey"
+          echo "$$backendCovKey"
 
           # Build Coverity URLs only if keys provided
           if ([string]::IsNullOrWhiteSpace($backendCovKey)) {
