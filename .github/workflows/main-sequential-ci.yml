@@ -804,15 +804,16 @@ jobs:
 
           # Coverity project names
           $backendCovKey  = "${{ needs.load-validate-configuration.outputs.backendCoverityProjectUrlName }}"
-          $backendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
+          $frontendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
           echo "$backendCovKey"
-          echo "$$backendCovKey"
+          echo "$frontendCovKey"
 
           # Build Coverity URLs only if keys provided
           if ([string]::IsNullOrWhiteSpace($backendCovKey)) {
             $backendCoveritySection = "- **Coverity:** Disabled or not configured"
           } else {
               $url = "https://scan.coverity.com/projects/$backendCovKey?tab=overview"
+              echo "$url"
               $backendCoveritySection = "- **Coverity Report:** [$url]($url)"
           }
 
@@ -820,6 +821,7 @@ jobs:
               $frontendCoveritySection = "- **Coverity:** Disabled or not configured"
           } else {
               $url = "https://scan.coverity.com/projects/$frontendCovKey?tab=overview"
+              echo "$url"
               $frontendCoveritySection = "- **Coverity Report:** [$url]($url)"
           }
 
