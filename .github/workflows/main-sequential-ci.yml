@@ -328,6 +328,7 @@ jobs:
       
   sonar-analysis:
     needs: load-validate-configuration
+    if: ${{ needs.load-validate-configuration.outputs.skipBackendSonar != 'true' || needs.load-validate-configuration.outputs.skipFrontendSonar != 'true' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -564,6 +565,7 @@ jobs:
           
   coverity-analysis:
     needs: load-validate-configuration 
+    if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' || needs.load-validate-configuration.outputs.skipFrontendCoverity != 'true' }}
     runs-on: ubuntu-latest
     
     steps:
@@ -662,6 +664,7 @@ jobs:
             
   sbom-analysis:
     needs: load-validate-configuration 
+    if: ${{ needs.load-validate-configuration.outputs.skipBackendSbom != 'true' || needs.load-validate-configuration.outputs.skipFrontendSbom != 'true' }}
     runs-on: ubuntu-latest
     
     steps:
@@ -684,8 +687,8 @@ jobs:
       - name: Create base output folders
         shell: pwsh
         run: |
-          mkdir "./artifacts" -ErrorAction Ignore
-          mkdir "./sbom" -ErrorAction Ignore
+          New-Item -ItemType Directory -Path "./artifacts" -Force | Out-Null
+          New-Item -ItemType Directory -Path "./sbom" -Force | Out-Null
           
       - name: Generate SBOM (Backend)
         if: ${{ needs.load-validate-configuration.outputs.skipBackendSbom != 'true' }}
@@ -710,8 +713,8 @@ jobs:
             Write-Host "`n============ Processing $serviceName ============"
 
             # Create output folders
-            mkdir "./artifacts/$serviceName" -ErrorAction Ignore | Out-Null
-            mkdir "./sbom/$serviceName"      -ErrorAction Ignore | Out-Null
+            New-Item -ItemType Directory -Path "./artifacts/$serviceName" -Force | Out-Null
+            New-Item -ItemType Directory -Path "./sbom/$serviceName" -Force | Out-Null
 
             # Build service
             dotnet build $sln.FullName -c Release -o "./artifacts/$serviceName"
@@ -741,8 +744,8 @@ jobs:
             Write-Host "`n============ Processing Frontend: $projectName ============"
 
             # Create output folders
-            mkdir "./artifacts/$projectName" -ErrorAction Ignore | Out-Null
-            mkdir "./sbom/$projectName"      -ErrorAction Ignore | Out-Null
+            New-Item -ItemType Directory -Path "./artifacts/$projectName" -Force | Out-Null
+            New-Item -ItemType Directory -Path "./sbom/$projectName" -Force | Out-Null
 
             # Install & build
             npm install  --prefix $projectDir
