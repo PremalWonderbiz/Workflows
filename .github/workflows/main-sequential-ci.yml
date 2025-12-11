@@ -795,63 +795,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Add CI Report Summary
+      - name: Generate CI Summary
         shell: pwsh
         run: |
           # Build Sonar URLs
-          $backendSonarUrl  = "https://sonarcloud.io/project/overview?id=${{ inputs.backend_sonar_key }}"
-          $frontendSonarUrl = "https://sonarcloud.io/project/overview?id=${{ inputs.frontend_sonar_key }}"
-
+          $backendSonarUrl  = "https://sonarcloud.io/project/overview?id=premalwonderbiz_DeviceMonitoringProject_Backend"
+          $frontendSonarUrl = "https://sonarcloud.io/project/overview?id=premalwonderbiz_DeviceMonitoringProject_Frontend"
+        
           # Coverity project names
-          $backendCovKey  = "${{ needs.load-validate-configuration.outputs.backendCoverityProjectUrlName }}"
-          $frontendCovKey = "${{ needs.load-validate-configuration.outputs.frontendCoverityProjectUrlName }}"
-          echo "$backendCovKey"
-          echo "$frontendCovKey"
-
+          $backendCovKey  = "device-monitoring-backends-git"
+          $frontendCovKey = "device-monitoring-frontends-git"
+        
+          Write-Host "Backend Coverity Key: $backendCovKey"
+          Write-Host "Frontend Coverity Key: $frontendCovKey"
+        
           # Build Coverity URLs only if keys provided
           if ([string]::IsNullOrWhiteSpace($backendCovKey)) {
             $backendCoveritySection = "- **Coverity:** Disabled or not configured"
           } else {
-              $url = "https://scan.coverity.com/projects/$backendCovKey?tab=overview"
-              echo "$url"
-              $backendCoveritySection = "- **Coverity Report:** [$url]($url)"
+            $backendCoverityUrl = "https://scan.coverity.com/projects/$backendCovKey`?tab=overview"
+            Write-Host "Backend Coverity URL: $backendCoverityUrl"
+            $backendCoveritySection = "- **Coverity Report:** [$backendCoverityUrl]($backendCoverityUrl)"
           }
-
+        
           if ([string]::IsNullOrWhiteSpace($frontendCovKey)) {
-              $frontendCoveritySection = "- **Coverity:** Disabled or not configured"
+            $frontendCoveritySection = "- **Coverity:** Disabled or not configured"
           } else {
-              $url = "https://scan.coverity.com/projects/$frontendCovKey?tab=overview"
-              echo "$url"
-              $frontendCoveritySection = "- **Coverity Report:** [$url]($url)"
+            $frontendCoverityUrl = "https://scan.coverity.com/projects/$frontendCovKey`?tab=overview"
+            Write-Host "Frontend Coverity URL: $frontendCoverityUrl"
+            $frontendCoveritySection = "- **Coverity Report:** [$frontendCoverityUrl]($frontendCoverityUrl)"
           }
-
-          @"
+        
+          # Create the summary
+          $summary = @"
           # CI Quality Analysis Summary
-
+        
           ## 🔍 SonarQube Analysis
+        
           ### Backend
-          - **Project Key:** `${{ inputs.backend_sonar_key }}`
+          - **Project Key:** ``premalwonderbiz_DeviceMonitoringProject_Backend``
           - **Report:** [$backendSonarUrl]($backendSonarUrl)
-
+        
           ### Frontend
-          - **Project Key:** `${{ inputs.frontend_sonar_key }}`
+          - **Project Key:** ``premalwonderbiz_DeviceMonitoringProject_Frontend``
           - **Report:** [$frontendSonarUrl]($frontendSonarUrl)
-
+        
           ---
-
+        
           ## 🛡️ Coverity Static Analysis
+        
           ### Backend
           $backendCoveritySection
-
+        
           ### Frontend
           $frontendCoveritySection
-
+        
           ---
-
+        
           ## 📦 SBOM Output
           SBOM files were generated per project and uploaded as workflow artifacts.
-          
-          #### Note : 
+        
+          #### Note: 
           Once analysis is completed you can check latest reports via above links
-
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "@
+        
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
