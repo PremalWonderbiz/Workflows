@@ -684,8 +684,8 @@ jobs:
       - name: Create base output folders
         shell: pwsh
         run: |
-          mkdir artifacts -ErrorAction Ignore
-          mkdir sbom -ErrorAction Ignore
+          mkdir "./artifacts" -ErrorAction Ignore
+          mkdir "./sbom" -ErrorAction Ignore
           
       - name: Generate SBOM (Backend)
         if: ${{ needs.load-validate-configuration.outputs.skipBackendSbom != 'true' }}
