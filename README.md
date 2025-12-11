@@ -26,7 +26,7 @@ Add the following inside any workflow to call **generic-ci.yml**:
 ```yml
 jobs:
   run-ci:
-    uses: ./.github/workflows/generic-ci.yml
+    uses: PremalWonderbiz/Workflows/.github/workflows/generic-ci.yml@main
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       COVERITY_BACKEND_PROJECT_TOKEN: ${{ secrets.COVERITY_BACKEND_PROJECT_TOKEN }}
