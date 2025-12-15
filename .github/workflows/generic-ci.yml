@@ -197,7 +197,7 @@ jobs:
     
           if ($backendSonar -eq "true") {
             # Must have services
-            if (-not backendProjectsAvailable) {
+            if (-not $backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend sonar"
               echo "skipBackendSonar=true" >> $env:GITHUB_OUTPUT
             }
@@ -214,7 +214,7 @@ jobs:
     
           if ($backendCoverity -eq "true") {
             # Must have services
-            if (-not backendProjectsAvailable) {
+            if (-not $backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend Coverity"
               echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
             }
@@ -225,7 +225,7 @@ jobs:
     
           if ($backendSbom -eq "true") {
             # Must have services
-            if (-not backendProjectsAvailable) {
+            if (-not $backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend Sbom"
               echo "skipBackendSbom=true" >> $env:GITHUB_OUTPUT
             }
@@ -255,7 +255,7 @@ jobs:
 
           if ($frontendSonar -eq "true") {
             # Must have projects
-            if (-not frontendProjectsAvailable) {
+            if (-not $frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sonar"
               echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
             }
@@ -272,7 +272,7 @@ jobs:
 
           if ($frontendCoverity -eq "true") {
             # Must have projects
-            if (-not frontendProjectsAvailable) {
+            if (-not $frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sonar"
               echo "skipFrontendCoverity=true" >> $env:GITHUB_OUTPUT
             }
@@ -283,7 +283,7 @@ jobs:
 
           if ($frontendSbom -eq "true") {
             # Must have projects
-            if (-not frontendProjectsAvailable) {
+            if (-not $frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sbom"
               echo "skipFrontendSbom=true" >> $env:GITHUB_OUTPUT
             }
