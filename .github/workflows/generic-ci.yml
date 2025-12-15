@@ -161,7 +161,22 @@ jobs:
       - name: Validate Configuration
         id: validate
         shell: pwsh
-        run: | 
+        run: |  
+          function Normalize-Bool($value) {
+            if ([string]::IsNullOrWhiteSpace($value)) { return "false" }
+            return $value
+          }
+          
+          function Apply-SkipRule($Name, $Enabled, $Changed, $SkipKey) {
+            if ($Enabled -eq "true" -and $Changed -eq "True") {
+              Write-Host "$Name enabled AND changes detected → will run"
+            }
+            else {
+              Write-Host "$Name disabled or no changes → skipping"
+              echo "$SkipKey=true" >> $env:GITHUB_OUTPUT
+            }
+          }
+    
           # 1. Check config file exists
           if (-not (Test-Path "Configurations/project-config.yml")) {
             Write-Error "Missing Configurations/project-config.yml. Cannot continue."
@@ -175,11 +190,7 @@ jobs:
           # =====================================================
           # BACKEND VALIDATION
           # =====================================================
-          $backendSonar = "${{ steps.config.outputs.backendSonarRaw }}"
-          if ($backendSonar -eq "" -or $null -eq $backendSonar) {
-            Write-Host "settings.backend.sonar not found → treating as false"
-            $backendSonar = "false"
-          }
+          $backendSonar = Normalize-Bool "${{ steps.config.outputs.backendSonarRaw }}"
           echo "backendSonar=$backendSonar" >> $env:GITHUB_OUTPUT
     
           if ($backendSonar -eq "true") {
@@ -196,11 +207,7 @@ jobs:
             }
           }
           
-          $backendCoverity = "${{ steps.config.outputs.backendCoverityRaw }}"
-          if ($backendCoverity -eq "" -or $null -eq $backendCoverity) {
-            Write-Host "settings.backend.coverity not found → treating as false"
-            $backendCoverity = "false"
-          }
+          $backendCoverity = Normalize-Bool "${{ steps.config.outputs.backendCoverityRaw }}"
           echo "backendCoverity=$backendCoverity" >> $env:GITHUB_OUTPUT
     
           if ($backendCoverity -eq "true") {
@@ -211,11 +218,7 @@ jobs:
             }
           }
           
-          $backendSbom = "${{ steps.config.outputs.backendSbomRaw }}"
-          if ($backendSbom -eq "" -or $null -eq $backendSbom) {
-            Write-Host "settings.backend.sbom not found → treating as false"
-            $backendSbom = "false"
-          }
+          $backendSbom = Normalize-Bool "${{ steps.config.outputs.backendSbomRaw }}"
           echo "backendSbom=$backendSbom" >> $env:GITHUB_OUTPUT
     
           if ($backendSbom -eq "true") {
