@@ -220,7 +220,7 @@ jobs:
             }
           }
           
-          $backendSbom = Normalize-Bool "${{ steps.config.outputs.   }}"
+          $backendSbom = Normalize-Bool "${{ steps.config.outputs.backendSbomRaw }}"
           echo "backendSbom=$backendSbom" >> $env:GITHUB_OUTPUT
           echo "backendSbom=$backendSbom"
     
