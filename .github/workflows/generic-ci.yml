@@ -246,7 +246,14 @@ jobs:
           Apply-SkipRule "Backend Coverity" $backendCoverity backendChanged "skipBackendCoverity"
           
           # Skip backend sbom if no changes detected
-          Apply-SkipRule "Backend SBOM" $backendSbom backendChanged "skipBackendSbom"
+          if ($backendSbom -eq "true" -and $backendChanged -eq "True") {
+            Write-Host "Backend sbom enabled AND backend changed → will run backend sbom"
+          }
+          else {
+            Write-Host "Backend sbom disabled or no backend changes → skipping backend sbom"
+            echo "skipBackendSbom=true" >> $env:GITHUB_OUTPUT
+          }
+          # Apply-SkipRule "Backend SBOM" $backendSbom backendChanged "skipBackendSbom"
 
           # =====================================================
           # FRONTEND VALIDATION
