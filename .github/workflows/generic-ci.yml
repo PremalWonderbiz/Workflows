@@ -222,6 +222,7 @@ jobs:
           
           $backendSbom = Normalize-Bool "${{ steps.config.outputs.   }}"
           echo "backendSbom=$backendSbom" >> $env:GITHUB_OUTPUT
+          echo "backendSbom=$backendSbom"
     
           if ($backendSbom -eq "true") {
             # Must have services
