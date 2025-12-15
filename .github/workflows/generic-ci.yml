@@ -175,8 +175,8 @@ jobs:
               Write-Host "$Name disabled or no changes → skipping"
               echo "$SkipKey=true" >> $env:GITHUB_OUTPUT
             }
-          }
-    
+          }      
+
           # 1. Check config file exists
           if (-not (Test-Path "Configurations/project-config.yml")) {
             Write-Error "Missing Configurations/project-config.yml. Cannot continue."
@@ -186,6 +186,8 @@ jobs:
           # Load YAML
           $configJson = yq -o=json '.' Configurations/project-config.yml
           $config = $configJson | ConvertFrom-Json
+          $backendProjectsAvailable = $config.backendServices -or $config.backendServices.Count -eq 0
+          $frontendProjectsAvailable = $config.frontendProjects -or $config.frontendProjects.Count -eq 0
 
           # =====================================================
           # BACKEND VALIDATION
@@ -195,7 +197,7 @@ jobs:
     
           if ($backendSonar -eq "true") {
             # Must have services
-            if (-not $config.backendServices -or $config.backendServices.Count -eq 0) {
+            if (-not backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend sonar"
               echo "skipBackendSonar=true" >> $env:GITHUB_OUTPUT
             }
@@ -212,7 +214,7 @@ jobs:
     
           if ($backendCoverity -eq "true") {
             # Must have services
-            if (-not $config.backendServices -or $config.backendServices.Count -eq 0) {
+            if (-not backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend Coverity"
               echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
             }
@@ -223,21 +225,14 @@ jobs:
     
           if ($backendSbom -eq "true") {
             # Must have services
-            if (-not $config.backendServices -or $config.backendServices.Count -eq 0) {
+            if (-not backendProjectsAvailable) {
               Write-Warning "backendServices is empty → skipping backend Sbom"
               echo "skipBackendSbom=true" >> $env:GITHUB_OUTPUT
             }
           }
 
           # Skip backend sonar if no changes detected
-          $backendChanged = "${{ needs.detect-changes.outputs.backend_changed }}"
-          if ($backendSonar -eq "true" -and $backendChanged -eq "True") {
-            Write-Host "Backend sonar enabled AND backend changed → will run backend sonar"
-          }
-          else {
-            Write-Host "Backend sonar disabled or no backend changes → skipping backend sonar"
-            echo "skipBackendSonar=true" >> $env:GITHUB_OUTPUT
-          }
+          Apply-SkipRule "Backend Sonar" $backendSonar backendChanged "skipBackendSonar"
           
           # Skip backend coverity if no project name found in configurations
           $backendCoverityProjectName = "${{ steps.config.outputs.backendCoverityProjectName }}"
@@ -247,37 +242,20 @@ jobs:
           }
           
           # Skip backend coverity if no changes detected
-          if ($backendCoverity -eq "true" -and $backendChanged -eq "True") {
-            Write-Host "Backend coverity enabled AND backend changed → will run backend coverity"
-          }
-          else {
-            Write-Host "Backend coverity disabled or no backend changes → skipping backend coverity"
-            echo "skipBackendCoverity=true" >> $env:GITHUB_OUTPUT
-          }
-          
+          Apply-SkipRule "Backend Coverity" $backendCoverity backendChanged "skipBackendCoverity"
           
           # Skip backend sbom if no changes detected
-          if ($backendSbom -eq "true" -and $backendChanged -eq "True") {
-            Write-Host "Backend sbom enabled AND backend changed → will run backend sbom"
-          }
-          else {
-            Write-Host "Backend sbom disabled or no backend changes → skipping backend sbom"
-            echo "skipBackendSbom=true" >> $env:GITHUB_OUTPUT
-          }
+          Apply-SkipRule "Backend SBOM" $backendSbom backendChanged "skipBackendSbom"
 
           # =====================================================
           # FRONTEND VALIDATION
           # =====================================================
-          $frontendSonar = "${{ steps.config.outputs.frontendSonarRaw }}"
-          if ($frontendSonar -eq "" -or $null -eq $frontendSonar) {
-            Write-Host "settings.frontend.sonar not found → treating as false"
-            $frontendSonar = "false"
-          }
+          $frontendSonar = Normalize-Bool "${{ steps.config.outputs.frontendSonarRaw }}"
           echo "frontendSonar=$frontendSonar" >> $env:GITHUB_OUTPUT
 
           if ($frontendSonar -eq "true") {
             # Must have projects
-            if (-not $config.frontendProjects -or $config.frontendProjects.Count -eq 0) {
+            if (-not frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sonar"
               echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
             }
@@ -289,45 +267,30 @@ jobs:
             }
           }
           
-          $frontendCoverity = "${{ steps.config.outputs.frontendCoverityRaw }}"
-          if ($frontendCoverity -eq "" -or $null -eq $frontendCoverity) {
-            Write-Host "settings.frontend.coverity not found → treating as false"
-            $frontendCoverity = "false"
-          }
+          $frontendCoverity = Normalize-Bool "${{ steps.config.outputs.frontendCoverityRaw }}"
           echo "frontendCoverity=$frontendCoverity" >> $env:GITHUB_OUTPUT
 
           if ($frontendCoverity -eq "true") {
             # Must have projects
-            if (-not $config.frontendProjects -or $config.frontendProjects.Count -eq 0) {
+            if (-not frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sonar"
               echo "skipFrontendCoverity=true" >> $env:GITHUB_OUTPUT
             }
           }
           
-          $frontendSbom = "${{ steps.config.outputs.frontendSbomRaw }}"
-          if ($frontendSbom -eq "" -or $null -eq $frontendSbom) {
-            Write-Host "settings.frontend.sbom not found → treating as false"
-            $frontendSbom = "false"
-          }
+          $frontendSbom = Normalize-Bool "${{ steps.config.outputs.frontendSbomRaw }}"
           echo "frontendSbom=$frontendSbom" >> $env:GITHUB_OUTPUT
 
           if ($frontendSbom -eq "true") {
             # Must have projects
-            if (-not $config.frontendProjects -or $config.frontendProjects.Count -eq 0) {
+            if (-not frontendProjectsAvailable) {
               Write-Warning "frontendProjects empty → skipping frontend sbom"
               echo "skipFrontendSbom=true" >> $env:GITHUB_OUTPUT
             }
           }
 
           $frontendChanged = "${{ needs.detect-changes.outputs.frontend_changed }}"
-          if ($frontendSonar -eq "true" -and $frontendChanged -eq "True") {
-            Write-Host "Frontend sonar enabled AND frontend changed → will run frontend sonar"
-          }
-          else {
-            Write-Host "Frontend sonar disabled or no frontend changes → skipping frontend sonar"
-            echo "skipFrontendSonar=true" >> $env:GITHUB_OUTPUT
-          }
-          
+          Apply-SkipRule "Frontend Sonar" $frontendSonar frontendChanged "skipFrontendSonar"
         
           # Skip frontend coverity if no project name found in configurations
           $frontendCoverityProjectName = "${{ steps.config.outputs.frontendCoverityProjectName }}"
@@ -336,21 +299,9 @@ jobs:
             $frontendCoverity = "false"
           }
           
-          if ($frontendCoverity -eq "true" -and $frontendChanged -eq "True") {
-            Write-Host "Frontend coverity enabled AND frontend changed → will run frontend coverity"
-          }
-          else {
-            Write-Host "Frontend coverity disabled or no frontend changes → skipping frontend coverity"
-            echo "skipFrontendCoverity=true" >> $env:GITHUB_OUTPUT
-          }
+          Apply-SkipRule "Frontend Coverity" $frontendCoverity frontendChanged "skipFrontendCoverity"
           
-          if ($frontendSbom -eq "true" -and $frontendChanged -eq "True") {
-            Write-Host "Frontend sbom enabled AND frontend changed → will run frontend sbom"
-          }
-          else {
-            Write-Host "Frontend sbom disabled or no frontend changes → skipping frontend sbom"
-            echo "skipFrontendSbom=true" >> $env:GITHUB_OUTPUT
-          }
+          Apply-SkipRule "Frontend SBOM" $frontendSbom frontendChanged "skipFrontendSbom"
           Write-Host "Validation completed."
       
   sonar-analysis:
