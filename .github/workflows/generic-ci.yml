@@ -231,8 +231,9 @@ jobs:
             }
           }
 
+          $backendChanged = "${{ needs.detect-changes.outputs.backend_changed }}"
           # Skip backend sonar if no changes detected
-          Apply-SkipRule "Backend Sonar" $backendSonar backendChanged "skipBackendSonar"
+          Apply-SkipRule "Backend Sonar" $backendSonar $backendChanged "skipBackendSonar"
           
           # Skip backend coverity if no project name found in configurations
           $backendCoverityProjectName = "${{ steps.config.outputs.backendCoverityProjectName }}"
@@ -242,19 +243,10 @@ jobs:
           }
           
           # Skip backend coverity if no changes detected
-          Apply-SkipRule "Backend Coverity" $backendCoverity backendChanged "skipBackendCoverity"
+          Apply-SkipRule "Backend Coverity" $backendCoverity $backendChanged "skipBackendCoverity"
           
           # Skip backend sbom if no changes detected
-          echo "backendSbom=$backendSbom"
-          echo "backendChanged=$backendChanged"
-          if ($backendSbom -eq "true" -and $backendChanged -eq "True") {
-            Write-Host "Backend sbom enabled AND backend changed → will run backend sbom"
-          }
-          else {
-            Write-Host "Backend sbom disabled or no backend changes → skipping backend sbom"
-            echo "skipBackendSbom=true" >> $env:GITHUB_OUTPUT
-          }
-          # Apply-SkipRule "Backend SBOM" $backendSbom backendChanged "skipBackendSbom"
+          Apply-SkipRule "Backend SBOM" $backendSbom $backendChanged "skipBackendSbom"
 
           # =====================================================
           # FRONTEND VALIDATION
@@ -299,7 +291,7 @@ jobs:
           }
 
           $frontendChanged = "${{ needs.detect-changes.outputs.frontend_changed }}"
-          Apply-SkipRule "Frontend Sonar" $frontendSonar frontendChanged "skipFrontendSonar"
+          Apply-SkipRule "Frontend Sonar" $frontendSonar $frontendChanged "skipFrontendSonar"
         
           # Skip frontend coverity if no project name found in configurations
           $frontendCoverityProjectName = "${{ steps.config.outputs.frontendCoverityProjectName }}"
@@ -308,9 +300,9 @@ jobs:
             $frontendCoverity = "false"
           }
           
-          Apply-SkipRule "Frontend Coverity" $frontendCoverity frontendChanged "skipFrontendCoverity"
+          Apply-SkipRule "Frontend Coverity" $frontendCoverity $frontendChanged "skipFrontendCoverity"
           
-          Apply-SkipRule "Frontend SBOM" $frontendSbom frontendChanged "skipFrontendSbom"
+          Apply-SkipRule "Frontend SBOM" $frontendSbom $frontendChanged "skipFrontendSbom"
           Write-Host "Validation completed."
       
   sonar-analysis:
