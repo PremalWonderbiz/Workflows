@@ -67,12 +67,17 @@ jobs:
           # -----------------------------------
           # Detect backend changes
           # -----------------------------------
-          foreach ($svc in $config.backendServices) {
-            $path = $svc.path.Replace("\", "/")
-            if ($changedFiles -match $path) {
-              Write-Host "Backend project changed: $($svc.name)"
-              $backendChanged = $true
-            }
+          Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
+              $slnPath    = $_.FullName
+              $serviceDir = Split-Path $slnPath -Parent
+              # Convert to relative path
+              $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart("\","/")
+              # Normalize slashes for Sonar
+              $relativeServiceDir = $relativeServiceDir.Replace("\", "/")
+              if ($changedFiles -match $relativeServiceDir) {
+                Write-Host "Backend project changed: $($svc.name)"
+                $backendChanged = $true
+              }
           }
 
           # -----------------------------------
@@ -675,6 +680,7 @@ jobs:
           $backendRoot = Join-Path $repoRoot $backendRoot
 
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln -File | ForEach-Object {
+
               $slnPath    = $_.FullName
               $serviceDir = Split-Path $slnPath -Parent
               $serviceName = Split-Path $serviceDir -Leaf
@@ -699,7 +705,6 @@ jobs:
                   -ps "Premal Kadam" `
                   -m "./sbom/$serviceName"
           }
-
           
       - name: Generate SBOM (Frontend)
         if: ${{ needs.load-validate-configuration.outputs.skipFrontendSbom != 'true' }}
