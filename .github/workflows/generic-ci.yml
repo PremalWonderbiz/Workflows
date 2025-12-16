@@ -60,6 +60,8 @@ jobs:
           # Parse config
           $configJson = yq -o=json '.' Configurations/project-config.yml
           $config = $configJson | ConvertFrom-Json
+          $backendRoot=$config.settings.backend.folder_path
+          echo "backendRoot=$backendRoot"
 
           $backendChanged = $false
           $frontendChanged = $false
