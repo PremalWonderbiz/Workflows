@@ -73,12 +73,13 @@ jobs:
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
               $slnPath    = $_.FullName
               $serviceDir = Split-Path $slnPath -Parent
+              $serviceName = Split-Path $serviceDir -Leaf
               # Convert to relative path
               $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart("\","/")
               # Normalize slashes for Sonar
               $relativeServiceDir = $relativeServiceDir.Replace("\", "/")
               if ($changedFiles -match $relativeServiceDir) {
-                Write-Host "Backend project changed: $($svc.name)"
+                Write-Host "Backend project changed: $($serviceName)"
                 $backendChanged = $true
               }
           }
@@ -680,7 +681,6 @@ jobs:
           $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
           
           $repoRoot   = $env:GITHUB_WORKSPACE
-          $backendRoot = Join-Path $repoRoot $backendRoot
 
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln -File | ForEach-Object {
 
