@@ -104,7 +104,6 @@ jobs:
       skipFrontendSonar: ${{ steps.validate.outputs.skipFrontendSonar }}
       skipFrontendCoverity: ${{ steps.validate.outputs.skipFrontendCoverity }}
       skipFrontendSbom: ${{ steps.validate.outputs.skipFrontendSbom }}
-      backendServices: ${{ steps.config.outputs.backend }}
       frontendProjects: ${{ steps.config.outputs.frontend }}
       backendServicesPath: ${{ steps.config.outputs.backendPath }}
       frontendProjectsPath: ${{ steps.config.outputs.frontendPath }}
@@ -129,8 +128,7 @@ jobs:
         id: config
         run: |
           CONFIG="Configurations/project-config.yml"
-      
-          echo "backend=$(yq -o=json -I=0 '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
+
           echo "frontend=$(yq -o=json -I=0 '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendPath=$(yq '.settings.backend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendPath=$(yq '.settings.frontend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
@@ -354,18 +352,29 @@ jobs:
         shell: pwsh
         run: |
           # Read backend list (produced by previous Load Config step)
-          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
+          $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
           $configPath = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/SonarQube.Analysis.xml"
       
           # Build inclusions list from each service.path
           $inclusionsList = @()
-          foreach ($svc in $services) {
-            # normalize slashes and add recursive glob
-            $p = ($svc.path).Replace("\", "/").TrimEnd("/")
-            # choose pattern you want Sonar to analyze (folder recursive)
-            $inclusionsList += "$p/**"
+          # Find all solution files under Backend
+          $repoRoot = $env:GITHUB_WORKSPACE
+
+          Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
+              $slnPath    = $_.FullName
+              $serviceDir = Split-Path $slnPath -Parent
+
+              # Convert to relative path
+              $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart("\","/")
+
+              # Normalize slashes for Sonar
+              $relativeServiceDir = $relativeServiceDir.Replace("\", "/")
+
+              Write-Host "`n============ Backend service: $relativeServiceDir ============"
+
+              $inclusionsList += "$relativeServiceDir/**"
           }
-      
+
           # If nothing, leave it empty (sonar default)
           $inclusions = ""
           if ($inclusionsList.Count -gt 0) {
@@ -396,12 +405,8 @@ jobs:
         if: ${{ needs.load-validate-configuration.outputs.skipBackendSonar != 'true' }}
         shell: pwsh
         run: |
-          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
-
           $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
           $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
-          echo "$backendRoot"
-          echo "$frontendRoot"
 
           # Find all solution files under Backend
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
@@ -562,13 +567,12 @@ jobs:
         if: ${{ needs.load-validate-configuration.outputs.skipBackendCoverity != 'true' }}
         shell: pwsh
         run: |
-          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
-        
+          $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
+
           $buildCommands = @()
-          foreach ($svc in $services) {
-            $rel = $svc.path.Replace("\", "/")
-            $full = Join-Path $env:GITHUB_WORKSPACE $rel
-            $buildCommands += "dotnet restore $full && dotnet build $full --no-incremental --configuration Debug"
+          Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
+              $slnPath    = $_.FullName
+              $buildCommands += "dotnet restore $slnPath && dotnet build $slnPath --no-incremental --configuration Debug"   
           }
         
           $buildCommand = ($buildCommands -join " && ")
@@ -665,40 +669,38 @@ jobs:
         if: ${{ needs.load-validate-configuration.outputs.skipBackendSbom != 'true' }}
         shell: pwsh
         run: |
-          $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
+          $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
+          
+          $repoRoot   = $env:GITHUB_WORKSPACE
+          $backendRoot = Join-Path $repoRoot $backendRoot
 
-          foreach ($svc in $services) {
+          Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln -File | ForEach-Object {
 
-            $servicePath = "$($svc.path)".Replace("\", "/")
-            $serviceDir  = Join-Path $env:GITHUB_WORKSPACE $servicePath
+              $slnPath    = $_.FullName
+              $serviceDir = Split-Path $slnPath -Parent
+              $serviceName = Split-Path $serviceDir -Leaf
 
-            # Find .sln
-            $sln = Get-ChildItem -Path $serviceDir -Filter *.sln -File | Select-Object -First 1
-            if (-not $sln) {
-              Write-Warning "No .sln found in $serviceDir → skipping SBOM for $($svc.name)"
-              continue
-            }
+              Write-Host "`n============ Processing $serviceName ============"
 
-            $serviceName = $svc.name
+              # Create output folders
+              New-Item -ItemType Directory -Path "./artifacts/$serviceName" -Force | Out-Null
+              New-Item -ItemType Directory -Path "./sbom/$serviceName" -Force | Out-Null
 
-            Write-Host "`n============ Processing $serviceName ============"
-
-            # Create output folders
-            New-Item -ItemType Directory -Path "./artifacts/$serviceName" -Force | Out-Null
-            New-Item -ItemType Directory -Path "./sbom/$serviceName" -Force | Out-Null
-
-            # Build service
-            dotnet build $sln.FullName -c Release -o "./artifacts/$serviceName"
+              # Build service
+              dotnet build $slnPath `
+                  -c Release `
+                  -o "./artifacts/$serviceName"
 
             # Generate SBOM
-            sbom-tool generate `
-              -b "./artifacts/$serviceName" `
-              -bc $serviceDir `
-              -pn $serviceName `
-              -pv "1.0.0" `
-              -ps "Premal Kadam" `
-              -m "./sbom/$serviceName"
-          }
+              sbom-tool generate `
+                  -b "./artifacts/$serviceName" `
+                  -bc $serviceDir `
+                  -pn $serviceName `
+                  -pv "1.0.0" `
+                  -ps "Premal Kadam" `
+                  -m "./sbom/$serviceName"
+}
+
           
       - name: Generate SBOM (Frontend)
         if: ${{ needs.load-validate-configuration.outputs.skipFrontendSbom != 'true' }}
