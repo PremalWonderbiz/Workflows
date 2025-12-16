@@ -222,7 +222,6 @@ jobs:
           
           $backendSbom = Normalize-Bool "${{ steps.config.outputs.backendSbomRaw }}"
           echo "backendSbom=$backendSbom" >> $env:GITHUB_OUTPUT
-          echo "backendSbom=$backendSbom"
     
           if ($backendSbom -eq "true") {
             # Must have services
@@ -246,6 +245,8 @@ jobs:
           Apply-SkipRule "Backend Coverity" $backendCoverity backendChanged "skipBackendCoverity"
           
           # Skip backend sbom if no changes detected
+          echo "backendSbom=$backendSbom"
+          echo "backendChanged=$backendChanged"
           if ($backendSbom -eq "true" -and $backendChanged -eq "True") {
             Write-Host "Backend sbom enabled AND backend changed → will run backend sbom"
           }
