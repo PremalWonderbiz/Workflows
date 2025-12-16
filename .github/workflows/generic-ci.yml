@@ -106,6 +106,8 @@ jobs:
       skipFrontendSbom: ${{ steps.validate.outputs.skipFrontendSbom }}
       backendServices: ${{ steps.config.outputs.backend }}
       frontendProjects: ${{ steps.config.outputs.frontend }}
+      backendServicesPath: ${{ steps.config.outputs.backendPath }}
+      frontendProjectsPath: ${{ steps.config.outputs.frontendPath }}
       backendCoverityProjectName: ${{ steps.config.outputs.backendCoverityProjectName }}
       backendCoverityProjectUrlName: ${{ steps.config.outputs.backendCoverityProjectUrlName }}
       frontendCoverityProjectName: ${{ steps.config.outputs.frontendCoverityProjectName }}
@@ -130,6 +132,8 @@ jobs:
       
           echo "backend=$(yq -o=json -I=0 '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontend=$(yq -o=json -I=0 '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "backendPath=$(yq '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontendPath=$(yq '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSonarRaw=$(yq '.settings.frontend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendCoverityRaw=$(yq '.settings.backend.coverity' $CONFIG)" >> $GITHUB_OUTPUT
@@ -394,21 +398,25 @@ jobs:
         run: |
           $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
 
-          foreach ($svc in $services) {
-            Write-Host "Backend service: $($svc.name)"
-            $path = $svc.path
+          $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
 
-            # Find .sln file
-            $sln = Get-ChildItem -Path $path -Filter *.sln | Select-Object -First 1
+          # Find all solution files under Backend
+          Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
 
-            if (-not $sln) {
-              Write-Warning "No .sln found for '$($svc.name)' → skipping"
-              continue
-            }
+            $slnPath     = $_.FullName
+            $serviceDir  = Split-Path $slnPath -Parent
+            $serviceName = Split-Path $serviceDir -Leaf
 
-            dotnet restore $sln.FullName
-            dotnet build $sln.FullName --no-restore --configuration Release
-            dotnet test $sln.FullName --no-restore `
+            Write-Host "`n============ Backend service: $serviceName ============"
+
+            dotnet restore $slnPath
+
+            dotnet build $slnPath `
+              --no-restore `
+              --configuration Release
+
+            dotnet test $slnPath `
+              --no-restore `
               /p:CollectCoverage=true `
               /p:CoverletOutputFormat=opencover `
               /p:CoverletOutput=./TestResults/
