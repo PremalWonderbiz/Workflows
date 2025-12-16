@@ -132,8 +132,8 @@ jobs:
       
           echo "backend=$(yq -o=json -I=0 '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontend=$(yq -o=json -I=0 '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
-          echo "backendPath=$(yq '.backendServices' $CONFIG)" >> $GITHUB_OUTPUT
-          echo "frontendPath=$(yq '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "backendPath=$(yq '.settings.backend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
+          echo "frontendPath=$(yq '.settings.frontend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendSonarRaw=$(yq '.settings.frontend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendCoverityRaw=$(yq '.settings.backend.coverity' $CONFIG)" >> $GITHUB_OUTPUT
@@ -399,6 +399,9 @@ jobs:
           $services = '${{ needs.load-validate-configuration.outputs.backendServices }}' | ConvertFrom-Json
 
           $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
+          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
+          echo "$backendRoot"
+          echo "$frontendRoot"
 
           # Find all solution files under Backend
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
