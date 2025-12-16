@@ -61,6 +61,7 @@ jobs:
           $configJson = yq -o=json '.' Configurations/project-config.yml
           $config = $configJson | ConvertFrom-Json
           $backendRoot=Join-Path $env:GITHUB_WORKSPACE $config.settings.backend.folder_path
+          $repoRoot=$env:GITHUB_WORKSPACE
           echo "backendRoot=$backendRoot"
 
           $backendChanged = $false
