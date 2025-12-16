@@ -675,7 +675,6 @@ jobs:
           $backendRoot = Join-Path $repoRoot $backendRoot
 
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln -File | ForEach-Object {
-
               $slnPath    = $_.FullName
               $serviceDir = Split-Path $slnPath -Parent
               $serviceName = Split-Path $serviceDir -Leaf
@@ -699,7 +698,7 @@ jobs:
                   -pv "1.0.0" `
                   -ps "Premal Kadam" `
                   -m "./sbom/$serviceName"
-}
+          }
 
           
       - name: Generate SBOM (Frontend)
