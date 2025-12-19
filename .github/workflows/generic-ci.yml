@@ -61,6 +61,7 @@ jobs:
           $configJson = yq -o=json '.' Configurations/project-config.yml
           $config = $configJson | ConvertFrom-Json
           $backendRoot=Join-Path $env:GITHUB_WORKSPACE $config.settings.backend.folder_path
+          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE $config.settings.frontend.folder_path
           $repoRoot=$env:GITHUB_WORKSPACE
           echo "backendRoot=$backendRoot"
 
@@ -86,13 +87,33 @@ jobs:
 
           # -----------------------------------
           # Detect frontend changes
-          # -----------------------------------
-          foreach ($svc in $config.frontendProjects) {
-            $path = $svc.path.Replace("\", "/")
-            if ($changedFiles -match $path) {
-              Write-Host "Frontend project changed: $($svc.name)"
+          # -----------------------------------          
+          Get-ChildItem -Path $frontendRoot -Directory | ForEach-Object {
+            $serviceDir = $_.FullName
+            $serviceName = $_.Name
+            $packageJsonPath = Join-Path $serviceDir "package.json"
+
+            # Only treat folders with package.json as frontend apps
+            if (-not (Test-Path $packageJsonPath)) {
+              Write-Warning "package json missing: $serviceDir"
+              continue
+            }
+
+            # Convert to relative path
+            $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart(@('\','/'))
+            $relativeServiceDir = $relativeServiceDir.Replace('\','/')
+
+            Write-Host "`n============ Frontend service: $relativeServiceDir ============"
+
+            echo "Frontend Service Path: $relativeServiceDir"
+            echo "service dir Path: $serviceDir"
+                           
+            #------------------------------------
+            if ($changedFiles -match $relativeServiceDir) {
+              Write-Host "Frontend project changed: $($serviceName)"
               $frontendChanged = $true
             }
+            #----------------------
           }
 
           # Output results (true/false)
@@ -113,7 +134,6 @@ jobs:
       skipFrontendSonar: ${{ steps.validate.outputs.skipFrontendSonar }}
       skipFrontendCoverity: ${{ steps.validate.outputs.skipFrontendCoverity }}
       skipFrontendSbom: ${{ steps.validate.outputs.skipFrontendSbom }}
-      frontendProjects: ${{ steps.config.outputs.frontend }}
       backendServicesPath: ${{ steps.config.outputs.backendPath }}
       frontendProjectsPath: ${{ steps.config.outputs.frontendPath }}
       backendCoverityProjectName: ${{ steps.config.outputs.backendCoverityProjectName }}
@@ -138,7 +158,6 @@ jobs:
         run: |
           CONFIG="Configurations/project-config.yml"
 
-          echo "frontend=$(yq -o=json -I=0 '.frontendProjects' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendPath=$(yq '.settings.backend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendPath=$(yq '.settings.frontend.folder_path' $CONFIG)" >> $GITHUB_OUTPUT
           echo "backendSonarRaw=$(yq '.settings.backend.sonar' $CONFIG)" >> $GITHUB_OUTPUT
@@ -151,15 +170,8 @@ jobs:
           echo "backendCoverityProjectUrlName=$(yq '.settings.backend.coverity_project_url_name' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendCoverityProjectName=$(yq '.settings.frontend.coverity_project_name' $CONFIG)" >> $GITHUB_OUTPUT
           echo "frontendCoverityProjectUrlName=$(yq '.settings.frontend.coverity_project_url_name' $CONFIG)" >> $GITHUB_OUTPUT
-          
-      
-          echo "=== DEBUG PRINTS FROM Load Configurations ==="
-          echo "backendServices:"
-          yq -o=json -I=0 '.backendServices' $CONFIG
-      
-          echo "frontendProjects:"
-          yq -o=json -I=0 '.frontendProjects' $CONFIG
-      
+                
+          echo "=== DEBUG PRINTS FROM Load Configurations ==="      
           echo "backend.sonar:"
           yq '.settings.backend.sonar' $CONFIG
       
@@ -197,8 +209,18 @@ jobs:
           # Load YAML
           $configJson = yq -o=json '.' Configurations/project-config.yml
           $config = $configJson | ConvertFrom-Json
-          $backendProjectsAvailable = $config.backendServices -or $config.backendServices.Count -eq 0
-          $frontendProjectsAvailable = $config.frontendProjects -or $config.frontendProjects.Count -eq 0
+          $backendRoot=Join-Path $env:GITHUB_WORKSPACE $config.settings.backend.folder_path
+          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE $config.settings.frontend.folder_path
+          $backendProjectsAvailable = (
+                Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            ) -ne $null
+
+          $frontendProjectsAvailable = (
+                Get-ChildItem -Path $frontendRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { Test-Path (Join-Path $_.FullName "package.json") } |
+                Select-Object -First 1
+            ) -ne $null
 
           # =====================================================
           # BACKEND VALIDATION
@@ -415,7 +437,6 @@ jobs:
         shell: pwsh
         run: |
           $backendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.backendServicesPath }}
-          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
 
           # Find all solution files under Backend
           Get-ChildItem -Path $backendRoot -Recurse -Filter *.sln | ForEach-Object {
@@ -452,7 +473,7 @@ jobs:
         shell: pwsh
         run: |
           # Load frontend project list
-          $services = '${{ needs.load-validate-configuration.outputs.frontendProjects }}' | ConvertFrom-Json
+          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
       
           # Use existing analysis folder
           $analysisDir = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/FrontendSonarAnalysis"
@@ -464,17 +485,30 @@ jobs:
           }
       
           # Build each project first
-          foreach ($svc in $services) {
-            Write-Host "Building frontend project: $($svc.name)"
-            $projectPath = Join-Path $env:GITHUB_WORKSPACE $svc.path
-      
-            if (-not (Test-Path $projectPath)) {
-              Write-Warning "Project path missing: $projectPath"
+          Get-ChildItem -Path $frontendRoot -Directory | ForEach-Object {
+            $serviceDir = $_.FullName
+            $packageJsonPath = Join-Path $serviceDir "package.json"
+
+            # Only treat folders with package.json as frontend apps
+            if (-not (Test-Path $packageJsonPath)) {
+              Write-Warning "package json missing: $serviceDir"
               continue
             }
+
+            # Convert to relative path
+            $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart(@('\','/'))
+            $relativeServiceDir = $relativeServiceDir.Replace('\','/')
+
+            Write-Host "`n============ Frontend service: $relativeServiceDir ============"
+
+            echo "Frontend Service Path: $relativeServiceDir"
+            echo "service dir Path: $serviceDir"
+                           
+            #------------------------------------
+            Write-Host "Building frontend project: $relativeServiceDir"
       
-            cd $projectPath
-      
+            cd $serviceDir
+       
             if (Test-Path "package-lock.json") {
               npm ci
             } else {
@@ -486,25 +520,46 @@ jobs:
               if ((npm run | Select-String -Pattern "build")) {
                 npm run build
               } else {
-                Write-Warning "No build script for project $($svc.name)"
+                Write-Warning "No build script for project $($relativeServiceDir)"
               }
       
               # tests
               if ((npm run | Select-String -Pattern "test")) {
                 npm test -- --coverage
               } else {
-                Write-Warning "No test script for project $($svc.name)"
+                Write-Warning "No test script for project $($relativeServiceDir)"
               }
             }
       
             cd $analysisDir
+            #----------------------
           }
       
           # Build dynamic sources for sonar
-          $sourceList = @()
-          foreach ($svc in $services) {
-            $src = "$($svc.path)/src".Replace("\", "/")
+          $sourceList = @()          
+          Get-ChildItem -Path $frontendRoot -Directory | ForEach-Object {
+            $serviceDir = $_.FullName
+            $packageJsonPath = Join-Path $serviceDir "package.json"
+
+            # Only treat folders with package.json as frontend apps
+            if (-not (Test-Path $packageJsonPath)) {
+              Write-Warning "package json missing: $serviceDir"
+              continue
+            }
+
+            # Convert to relative path
+            $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart(@('\','/'))
+            $relativeServiceDir = $relativeServiceDir.Replace('\','/')
+
+            Write-Host "`n============ Frontend service: $relativeServiceDir ============"
+
+            echo "Frontend Service Path: $relativeServiceDir"
+            echo "service dir Path: $serviceDir"
+                           
+            #------------------------------------
+            $src = "$($relativeServiceDir)/src".Replace("\", "/")
             $sourceList += $src
+            #----------------------
           }
       
           $sources = ($sourceList -join ",")
@@ -541,7 +596,6 @@ jobs:
             "-Dsonar.organization=${{ inputs.SONAR_ORG }}" `
             "-Dsonar.host.url=$env:SONAR_HOST_URL" `
             "-Dsonar.token=$env:SONAR_TOKEN"
-
              
   coverity-analysis:
     needs: load-validate-configuration 
@@ -713,33 +767,48 @@ jobs:
         if: ${{ needs.load-validate-configuration.outputs.skipFrontendSbom != 'true' }}
         shell: pwsh
         run: |
-          $projects = '${{ needs.load-validate-configuration.outputs.frontendProjects }}' | ConvertFrom-Json
+          $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
+          
+          Get-ChildItem -Path $frontendRoot -Directory | ForEach-Object {
+            $serviceDir = $_.FullName
+            $serviceName = $_.Name
+            $packageJsonPath = Join-Path $serviceDir "package.json"
 
-          foreach ($proj in $projects) {
+            # Only treat folders with package.json as frontend apps
+            if (-not (Test-Path $packageJsonPath)) {
+              Write-Warning "package json missing: $serviceDir"
+              continue
+            }
 
-            $projectPath = "$($proj.path)".Replace("\", "/")
-            $projectDir  = Join-Path $env:GITHUB_WORKSPACE $projectPath
-            $projectName = $proj.name
+            # Convert to relative path
+            $relativeServiceDir = $serviceDir.Replace($repoRoot, "").TrimStart(@('\','/'))
+            $relativeServiceDir = $relativeServiceDir.Replace('\','/')
 
-            Write-Host "`n============ Processing Frontend: $projectName ============"
+            Write-Host "`n============ Frontend service: $serviceName ============"
+
+            echo "Frontend Service Path: $relativeServiceDir"
+            echo "service dir Path: $serviceDir"
+                           
+            #------------------------------------
+            Write-Host "`n============ Processing Frontend: $serviceName ============"
 
             # Create output folders
-            New-Item -ItemType Directory -Path "./artifacts/$projectName" -Force | Out-Null
-            New-Item -ItemType Directory -Path "./sbom/$projectName" -Force | Out-Null
+            New-Item -ItemType Directory -Path "./artifacts/$serviceName" -Force | Out-Null
+            New-Item -ItemType Directory -Path "./sbom/$serviceName" -Force | Out-Null
 
             # Install & build
-            npm install  --prefix $projectDir
-            npm run build --prefix $projectDir
+            npm install  --prefix $serviceDir
+            npm run build --prefix $serviceDir
 
             # Copy built output (.next, dist, etc.)
-            if (Test-Path "$projectDir/.next") {
-              Copy-Item "$projectDir/.next" "./artifacts/$projectName" -Recurse -Force
+            if (Test-Path "$serviceDir/.next") {
+              Copy-Item "$serviceDir/.next" "./artifacts/$serviceName" -Recurse -Force
             }
-            elseif (Test-Path "$projectDir/dist") {
-              Copy-Item "$projectDir/dist" "./artifacts/$projectName" -Recurse -Force
+            elseif (Test-Path "$serviceDir/dist") {
+              Copy-Item "$serviceDir/dist" "./artifacts/$serviceName" -Recurse -Force
             }
-            elseif (Test-Path "$projectDir/build") {
-              Copy-Item "$projectDir/build" "./artifacts/$projectName" -Recurse -Force
+            elseif (Test-Path "$serviceDir/build") {
+              Copy-Item "$serviceDir/build" "./artifacts/$serviceName" -Recurse -Force
             }
             else {
               Write-Warning "No frontend build output found (.next/dist/build). SBOM may be empty."
@@ -747,12 +816,13 @@ jobs:
 
             # Generate SBOM
             sbom-tool generate `
-              -b "./artifacts/$projectName" `
-              -bc $projectDir `
-              -pn $projectName `
+              -b "./artifacts/$serviceName" `
+              -bc $serviceDir `
+              -pn $serviceName `
               -pv "1.0.0" `
               -ps "Premal Kadam" `
-              -m "./sbom/$projectName"
+              -m "./sbom/$serviceName"
+            #----------------------
           }
           
       - name: Upload all SBOM Artifacts
