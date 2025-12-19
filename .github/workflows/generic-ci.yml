@@ -221,6 +221,8 @@ jobs:
                 Where-Object { Test-Path (Join-Path $_.FullName "package.json") } |
                 Select-Object -First 1
             ) -ne $null
+          echo "backendProjectAvailable:$backendProjectsAvailable"
+          echo "frontendProjectAvailable:$frontendProjectsAvailable"
 
           # =====================================================
           # BACKEND VALIDATION
