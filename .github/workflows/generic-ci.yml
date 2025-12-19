@@ -476,6 +476,7 @@ jobs:
         run: |
           # Load frontend project list
           $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
+          echo "frontendRoot=$frontendRoot"
       
           # Use existing analysis folder
           $analysisDir = Join-Path $env:GITHUB_WORKSPACE "Configurations/sonar/FrontendSonarAnalysis"
@@ -770,7 +771,7 @@ jobs:
         shell: pwsh
         run: |
           $frontendRoot = Join-Path $env:GITHUB_WORKSPACE ${{ needs.load-validate-configuration.outputs.frontendProjectsPath }}
-          
+          echo "frontendRoot=$frontendRoot"
           Get-ChildItem -Path $frontendRoot -Directory | ForEach-Object {
             $serviceDir = $_.FullName
             $serviceName = $_.Name
